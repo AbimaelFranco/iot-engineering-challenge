@@ -222,3 +222,6 @@ __marimo__/
 
 # ESP-IDF build output
 firmware/ESP32/build/
+
+# Credenciales locales (WiFi / MQTT) - nunca se suben al repo
+firmware/ESP32/main/secrets.h

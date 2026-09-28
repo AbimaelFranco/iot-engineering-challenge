@@ -219,3 +219,6 @@ __marimo__/
 
 # Claude Code local skills/config (not published for now)
 .claude/skills/
+
+# ESP-IDF build output
+firmware/ESP32/build/

@@ -2,11 +2,17 @@
 Suscriptor MQTT que guarda en PostgreSQL (Render) un historial/log de los
 mensajes recibidos del broker.
 
-Esta tabla es un log generico (no especifico del sensor AHT10): no guarda
-temperatura/humedad, solo el mensaje crudo con su hora exacta. Si luego se
-quiere analizar el JSON del sensor, se puede leer desde payload_json.
+Todo mensaje se guarda primero en 'mqtt_log' (log crudo, generico, tabla
+maestra). Ademas, si el topic sigue el arbol documentado en
+Documentation/README.md, el mensaje tambien se enruta a una tabla
+especializada:
+    status/<node_id>       -> node_status_log (historial online/offline)
+    cmd/<node_id>           -> node_commands (comando enviado)
+    cmd/<node_id>/ack       -> node_commands (actualiza el ack por id)
+El enrutado es "best effort": si falla o el payload no trae los campos
+esperados, el mensaje ya quedo a salvo en mqtt_log de todas formas.
 
-La tabla 'mqtt_log' debe existir de antemano (ver db_creator.py).
+Las tablas deben existir de antemano (ver db_creator.py).
 
 Configuracion (via .env, ver .env.example): MQTT_HOST, MQTT_PORT,
 MQTT_USERNAME, MQTT_PASSWORD, MQTT_TOPIC, MQTT_CLIENT_ID, DATABASE_URL.
@@ -28,7 +34,7 @@ import os
 import ssl
 import sys
 import threading
-from datetime import datetime
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import paho.mqtt.client as mqtt
@@ -36,10 +42,67 @@ import psycopg2
 
 import config
 
-INSERT_SQL = """
+INSERT_MQTT_LOG_SQL = """
 INSERT INTO mqtt_log (topic, qos, payload_raw, payload_json)
 VALUES (%s, %s, %s, %s);
 """
+
+INSERT_STATUS_SQL = """
+INSERT INTO node_status_log (node_id, state, event_ts, topic, payload_raw)
+VALUES (%s, %s, %s, %s, %s);
+"""
+
+UPSERT_COMMAND_SQL = """
+INSERT INTO node_commands (id, node_id, action, value, sent_topic, sent_payload)
+VALUES (%s, %s, %s, %s, %s, %s)
+ON CONFLICT (id) DO UPDATE SET
+    node_id = EXCLUDED.node_id,
+    action = EXCLUDED.action,
+    value = EXCLUDED.value,
+    sent_topic = EXCLUDED.sent_topic,
+    sent_payload = EXCLUDED.sent_payload,
+    sent_at = now();
+"""
+
+UPDATE_COMMAND_ACK_SQL = """
+UPDATE node_commands
+SET ack_status = %s,
+    ack_applied = %s,
+    ack_reason = %s,
+    ack_topic = %s,
+    ack_payload = %s,
+    acked_at = now()
+WHERE id = %s;
+"""
+
+
+def parse_topic(topic):
+    """Ubica un topic dentro del arbol iot-challenge/{status,cmd}/... .
+
+    Devuelve (categoria, node_id, es_ack). categoria es None si el topic
+    no coincide con 'status' ni 'cmd' en ningun nivel (p.ej. telemetria,
+    que no tiene tabla especializada propia).
+    """
+    parts = topic.split("/")
+    if "status" in parts:
+        idx = parts.index("status")
+        node_id = parts[idx + 1] if len(parts) > idx + 1 else None
+        return "status", node_id, False
+    if "cmd" in parts:
+        idx = parts.index("cmd")
+        node_id = parts[idx + 1] if len(parts) > idx + 1 else None
+        is_ack = len(parts) > idx + 2 and parts[idx + 2] == "ack"
+        return "cmd", node_id, is_ack
+    return None, None, False
+
+
+def _epoch_to_datetime(ts):
+    if ts is None:
+        return None
+    try:
+        return datetime.fromtimestamp(float(ts), tz=timezone.utc)
+    except (TypeError, ValueError, OSError):
+        return None
 
 # Colores ANSI para distinguir el tipo de evento de un vistazo en los logs
 # (Render, Docker y la mayoria de terminales los interpretan bien).
@@ -146,6 +209,58 @@ def on_subscribe(client, userdata, mid, reason_codes, properties=None):
         log_ok(f"Suscrito a '{userdata['topic']}', codigos: {codes}")
 
 
+def _save_status(conn, msg, node_id, data, raw_text):
+    state = data.get("state")
+    if not node_id or state is None:
+        log_warn(f"Mensaje de status en '{msg.topic}' sin node_id o 'state', no se guarda en node_status_log")
+        return
+    event_ts = _epoch_to_datetime(data.get("ts"))
+    with conn.cursor() as cur:
+        cur.execute(INSERT_STATUS_SQL, (node_id, state, event_ts, msg.topic, raw_text))
+    log_ok(f"Estado registrado | node_id={node_id} state={state}")
+
+
+def _save_command_sent(conn, msg, node_id, data, raw_text):
+    cmd_id = data.get("id")
+    action = data.get("action")
+    if not node_id or cmd_id is None or action is None:
+        log_warn(f"Comando en '{msg.topic}' sin node_id, 'id' o 'action', no se guarda en node_commands")
+        return
+    value = data.get("value")
+    with conn.cursor() as cur:
+        cur.execute(
+            UPSERT_COMMAND_SQL,
+            (cmd_id, node_id, action, json.dumps(value) if value is not None else None, msg.topic, raw_text),
+        )
+    log_ok(f"Comando registrado | id={cmd_id} node_id={node_id} action={action}")
+
+
+def _save_command_ack(conn, msg, data, raw_text):
+    cmd_id = data.get("id")
+    status = data.get("status")
+    if cmd_id is None or status is None:
+        log_warn(f"Ack en '{msg.topic}' sin 'id' o 'status', no se guarda en node_commands")
+        return
+    applied = data.get("applied")
+    reason = data.get("reason")
+    with conn.cursor() as cur:
+        cur.execute(
+            UPDATE_COMMAND_ACK_SQL,
+            (
+                status,
+                json.dumps(applied) if applied is not None else None,
+                reason,
+                msg.topic,
+                raw_text,
+                cmd_id,
+            ),
+        )
+        if cur.rowcount == 0:
+            log_warn(f"Ack de comando '{cmd_id}' no corresponde a ningun registro en node_commands")
+            return
+    log_ok(f"Ack aplicado | id={cmd_id} status={status}")
+
+
 def make_on_message(conn):
     def on_message(client, userdata, msg):
         raw_text, data = try_parse_json(msg.payload)
@@ -155,7 +270,7 @@ def make_on_message(conn):
         try:
             with conn.cursor() as cur:
                 cur.execute(
-                    INSERT_SQL,
+                    INSERT_MQTT_LOG_SQL,
                     (
                         msg.topic,
                         msg.qos,
@@ -165,7 +280,22 @@ def make_on_message(conn):
                 )
             log_ok(f"Guardado en DB | topic={msg.topic} qos={msg.qos} payload={raw_text}")
         except Exception as e:
-            log_error(f"No se pudo guardar el mensaje de '{msg.topic}': {e}")
+            log_error(f"No se pudo guardar el mensaje de '{msg.topic}' en mqtt_log: {e}")
+            return
+
+        if data is None:
+            return
+
+        category, node_id, is_ack = parse_topic(msg.topic)
+        try:
+            if category == "status":
+                _save_status(conn, msg, node_id, data, raw_text)
+            elif category == "cmd" and is_ack:
+                _save_command_ack(conn, msg, data, raw_text)
+            elif category == "cmd":
+                _save_command_sent(conn, msg, node_id, data, raw_text)
+        except Exception as e:
+            log_error(f"No se pudo enrutar '{msg.topic}' a su tabla especializada: {e}")
 
     return on_message
 

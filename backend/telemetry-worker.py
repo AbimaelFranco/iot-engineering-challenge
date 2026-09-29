@@ -12,7 +12,10 @@ especializada:
 El enrutado es "best effort": si falla o el payload no trae los campos
 esperados, el mensaje ya quedo a salvo en mqtt_log de todas formas.
 
-Las tablas deben existir de antemano (ver db_creator.py).
+Las tablas deben existir de antemano (ver db_creator.py). Las columnas de
+hora son TIMESTAMP *sin* zona horaria con la hora local de Guatemala ya
+calculada (ver GUATEMALA_TZ mas abajo) - no dependen del timezone de la
+sesion de PostgreSQL, que resulto no ser confiable en produccion.
 
 Configuracion (via .env, ver .env.example): MQTT_HOST, MQTT_PORT,
 MQTT_USERNAME, MQTT_PASSWORD, MQTT_TOPIC, MQTT_CLIENT_ID, DATABASE_URL.
@@ -34,13 +37,22 @@ import os
 import ssl
 import sys
 import threading
-from datetime import datetime, timezone
+from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from zoneinfo import ZoneInfo
 
 import paho.mqtt.client as mqtt
 import psycopg2
 
 import config
+
+# Zona horaria unica de la app (ver config.DB_TIMEZONE). Todas las horas
+# que este script guarda son TIMESTAMP *sin* zona horaria, ya convertidas
+# a esta hora local explicitamente en Python o en el propio SQL (ver
+# db_creator.py) - no dependen del timezone de la sesion de PostgreSQL,
+# que resulto ser poco confiable en Render (conexion de larga duracion /
+# posible connection pooler que no respeta SET TIME ZONE entre queries).
+GUATEMALA_TZ = ZoneInfo(config.DB_TIMEZONE)
 
 INSERT_MQTT_LOG_SQL = """
 INSERT INTO mqtt_log (topic, qos, payload_raw, payload_json)
@@ -57,16 +69,16 @@ INSERT INTO node_readings (node_id, temperature, humidity, reading_time)
 VALUES (%s, %s, %s, %s);
 """
 
-UPSERT_COMMAND_SQL = """
-INSERT INTO node_commands (id, node_id, action, value, sent_topic, sent_payload)
-VALUES (%s, %s, %s, %s, %s, %s)
+INSERT_COMMAND_SQL = """
+INSERT INTO node_commands (id, node_id, action, value, sent_topic, sent_payload, sent_at)
+VALUES (%s, %s, %s, %s, %s, %s, %s)
 ON CONFLICT (id) DO UPDATE SET
     node_id = EXCLUDED.node_id,
     action = EXCLUDED.action,
     value = EXCLUDED.value,
     sent_topic = EXCLUDED.sent_topic,
     sent_payload = EXCLUDED.sent_payload,
-    sent_at = now();
+    sent_at = EXCLUDED.sent_at;
 """
 
 UPDATE_COMMAND_ACK_SQL = """
@@ -76,7 +88,7 @@ SET ack_status = %s,
     ack_reason = %s,
     ack_topic = %s,
     ack_payload = %s,
-    acked_at = now()
+    acked_at = %s
 WHERE id = %s;
 """
 
@@ -104,13 +116,20 @@ def parse_topic(topic):
     return None, None, False
 
 
-def _epoch_to_datetime(ts):
+def _epoch_to_local_naive(ts):
+    """Convierte un epoch Unix (siempre UTC por definicion) a la hora
+    local de Guatemala, como datetime "naive" (sin tzinfo) listo para
+    guardar en una columna TIMESTAMP sin zona horaria."""
     if ts is None:
         return None
     try:
-        return datetime.fromtimestamp(float(ts), tz=timezone.utc)
+        return datetime.fromtimestamp(float(ts), tz=GUATEMALA_TZ).replace(tzinfo=None)
     except (TypeError, ValueError, OSError):
         return None
+
+
+def _now_local_naive():
+    return datetime.now(GUATEMALA_TZ).replace(tzinfo=None)
 
 # Colores ANSI para distinguir el tipo de evento de un vistazo en los logs
 # (Render, Docker y la mayoria de terminales los interpretan bien).
@@ -179,14 +198,6 @@ def connect_db(db_url: str):
         )
     conn = psycopg2.connect(db_url, sslmode="require")
     conn.autocommit = True
-    # Forzado explicito por sesion: el default a nivel de BD (ALTER DATABASE
-    # en db_creator.py) solo aplica a conexiones NUEVAS creadas despues de
-    # ejecutarlo. Una conexion de larga duracion (como esta, que vive todo
-    # el proceso) abierta antes de ese cambio se queda con el timezone
-    # anterior (UTC) para siempre. Esto garantiza la hora correcta sin
-    # depender del orden en que se hicieron las cosas.
-    with conn.cursor() as cur:
-        cur.execute(f"SET TIME ZONE '{config.DB_TIMEZONE}';")
     log_ok("Conectado a PostgreSQL")
     return conn
 
@@ -230,7 +241,7 @@ def _save_status(conn, msg, node_id, data, raw_text):
     if not node_id or state is None:
         log_warn(f"Mensaje de status en '{msg.topic}' sin node_id o 'state', no se guarda en node_status_log")
         return
-    event_ts = _epoch_to_datetime(data.get("ts"))
+    event_ts = _epoch_to_local_naive(data.get("ts"))
     with conn.cursor() as cur:
         cur.execute(INSERT_STATUS_SQL, (node_id, state, event_ts, msg.topic, raw_text))
     log_ok(f"Estado registrado | node_id={node_id} state={state}")
@@ -245,8 +256,16 @@ def _save_command_sent(conn, msg, node_id, data, raw_text):
     value = data.get("value")
     with conn.cursor() as cur:
         cur.execute(
-            UPSERT_COMMAND_SQL,
-            (cmd_id, node_id, action, json.dumps(value) if value is not None else None, msg.topic, raw_text),
+            INSERT_COMMAND_SQL,
+            (
+                cmd_id,
+                node_id,
+                action,
+                json.dumps(value) if value is not None else None,
+                msg.topic,
+                raw_text,
+                _now_local_naive(),
+            ),
         )
     log_ok(f"Comando registrado | id={cmd_id} node_id={node_id} action={action}")
 
@@ -268,6 +287,7 @@ def _save_command_ack(conn, msg, data, raw_text):
                 reason,
                 msg.topic,
                 raw_text,
+                _now_local_naive(),
                 cmd_id,
             ),
         )
@@ -283,7 +303,7 @@ def _save_reading(conn, msg, node_id, data, raw_text):
     if not node_id or temp is None or hum is None:
         log_warn(f"Telemetria en '{msg.topic}' sin node_id, 'temp' o 'hum', no se guarda en node_readings")
         return
-    reading_time = _epoch_to_datetime(data.get("ts")) or datetime.now(timezone.utc)
+    reading_time = _epoch_to_local_naive(data.get("ts")) or _now_local_naive()
     with conn.cursor() as cur:
         cur.execute(INSERT_READING_SQL, (node_id, temp, hum, reading_time))
     log_ok(f"Lectura registrada | node_id={node_id} temp={temp} hum={hum}")

@@ -229,3 +229,7 @@ firmware/ESP32/managed_components/
 
 # Credenciales locales (WiFi / MQTT) - nunca se suben al repo
 firmware/ESP32/main/secrets.h
+
+# Script local para despertar manualmente el servicio de Render - de uso
+# personal, no forma parte del despliegue ni se comparte en el repo
+backend/wake_render.py

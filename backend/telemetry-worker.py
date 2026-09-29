@@ -14,13 +14,22 @@ MQTT_USERNAME, MQTT_PASSWORD, MQTT_TOPIC, MQTT_CLIENT_ID, DATABASE_URL.
 Uso:
     python telemetry-worker.py
     python telemetry-worker.py --topic "esp32/#"
+
+Incluye un servidor HTTP minimo (GET / -> 200 OK) en el puerto de la
+variable PORT. Es solo para que Render lo pueda desplegar como Web
+Service (plan gratuito) en vez de Background Worker (de pago): Render
+exige que el proceso haga bind a $PORT. No tiene ninguna otra funcion;
+el trabajo real sigue siendo el loop de MQTT.
 """
 
 import argparse
 import json
+import os
 import ssl
 import sys
+import threading
 from datetime import datetime
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import paho.mqtt.client as mqtt
 import psycopg2
@@ -31,6 +40,24 @@ INSERT_SQL = """
 INSERT INTO mqtt_log (topic, qos, payload_raw, payload_json)
 VALUES (%s, %s, %s, %s);
 """
+
+
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain")
+        self.end_headers()
+        self.wfile.write(b"ok")
+
+    def log_message(self, format, *args):
+        pass  # evita que cada ping de health check ensucie el log de MQTT
+
+
+def start_health_server():
+    port = int(os.environ.get("PORT", "8080"))
+    server = HTTPServer(("0.0.0.0", port), HealthHandler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    print(f"[OK] Health check HTTP escuchando en :{port}")
 
 
 def parse_args():
@@ -108,6 +135,8 @@ def make_on_message(conn):
 
 def main():
     args = parse_args()
+
+    start_health_server()
 
     conn = connect_db(args.db_url)
 

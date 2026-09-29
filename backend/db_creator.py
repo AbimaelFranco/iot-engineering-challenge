@@ -76,6 +76,22 @@ CREATE INDEX IF NOT EXISTS idx_node_commands_node_sent
     ON node_commands (node_id, sent_at DESC);
 """
 
+# ---- node_readings: lecturas de sensor "limpias" (sin log crudo) --------
+# Topic: telemetria/<node_id>. Solo lo que hace falta para graficar/leer:
+# nodo, temperatura, humedad y hora de la lectura (la del propio nodo,
+# campo "ts" del payload; segundo de precision, sin milisegundos).
+CREATE_NODE_READINGS_SQL = """
+CREATE TABLE IF NOT EXISTS node_readings (
+    id            BIGSERIAL PRIMARY KEY,
+    node_id       TEXT NOT NULL,
+    temperature   NUMERIC(5,2),
+    humidity      NUMERIC(5,2),
+    reading_time  TIMESTAMPTZ(0) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_node_readings_node_time
+    ON node_readings (node_id, reading_time DESC);
+"""
+
 # Agregar aqui futuras tablas segun se vayan necesitando, cada una en su
 # propia constante CREATE_..._SQL.
 
@@ -83,6 +99,7 @@ TABLES = [
     ("mqtt_log", CREATE_MQTT_LOG_SQL),
     ("node_status_log", CREATE_NODE_STATUS_LOG_SQL),
     ("node_commands", CREATE_NODE_COMMANDS_SQL),
+    ("node_readings", CREATE_NODE_READINGS_SQL),
 ]
 
 # Migraciones sobre tablas que ya pudieron existir de una version anterior

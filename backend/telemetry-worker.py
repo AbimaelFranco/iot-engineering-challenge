@@ -52,6 +52,11 @@ INSERT INTO node_status_log (node_id, state, event_ts, topic, payload_raw)
 VALUES (%s, %s, %s, %s, %s);
 """
 
+INSERT_READING_SQL = """
+INSERT INTO node_readings (node_id, temperature, humidity, reading_time)
+VALUES (%s, %s, %s, %s);
+"""
+
 UPSERT_COMMAND_SQL = """
 INSERT INTO node_commands (id, node_id, action, value, sent_topic, sent_payload)
 VALUES (%s, %s, %s, %s, %s, %s)
@@ -77,13 +82,16 @@ WHERE id = %s;
 
 
 def parse_topic(topic):
-    """Ubica un topic dentro del arbol iot-challenge/{status,cmd}/... .
+    """Ubica un topic dentro del arbol iot-challenge/{telemetria,status,cmd}/... .
 
     Devuelve (categoria, node_id, es_ack). categoria es None si el topic
-    no coincide con 'status' ni 'cmd' en ningun nivel (p.ej. telemetria,
-    que no tiene tabla especializada propia).
+    no coincide con ninguna categoria conocida.
     """
     parts = topic.split("/")
+    if "telemetria" in parts:
+        idx = parts.index("telemetria")
+        node_id = parts[idx + 1] if len(parts) > idx + 1 else None
+        return "telemetria", node_id, False
     if "status" in parts:
         idx = parts.index("status")
         node_id = parts[idx + 1] if len(parts) > idx + 1 else None
@@ -269,6 +277,18 @@ def _save_command_ack(conn, msg, data, raw_text):
     log_ok(f"Ack aplicado | id={cmd_id} status={status}")
 
 
+def _save_reading(conn, msg, node_id, data, raw_text):
+    temp = data.get("temp")
+    hum = data.get("hum")
+    if not node_id or temp is None or hum is None:
+        log_warn(f"Telemetria en '{msg.topic}' sin node_id, 'temp' o 'hum', no se guarda en node_readings")
+        return
+    reading_time = _epoch_to_datetime(data.get("ts")) or datetime.now(timezone.utc)
+    with conn.cursor() as cur:
+        cur.execute(INSERT_READING_SQL, (node_id, temp, hum, reading_time))
+    log_ok(f"Lectura registrada | node_id={node_id} temp={temp} hum={hum}")
+
+
 def make_on_message(conn):
     def on_message(client, userdata, msg):
         raw_text, data = try_parse_json(msg.payload)
@@ -296,7 +316,9 @@ def make_on_message(conn):
 
         category, node_id, is_ack = parse_topic(msg.topic)
         try:
-            if category == "status":
+            if category == "telemetria":
+                _save_reading(conn, msg, node_id, data, raw_text)
+            elif category == "status":
                 _save_status(conn, msg, node_id, data, raw_text)
             elif category == "cmd" and is_ack:
                 _save_command_ack(conn, msg, data, raw_text)

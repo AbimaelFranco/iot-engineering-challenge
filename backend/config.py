@@ -19,6 +19,12 @@ MQTT_CLIENT_ID = os.environ.get("MQTT_CLIENT_ID", "postgres_logger")
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
+# Timezone de la base de datos y de toda hora que se muestre/derive en la
+# app. Compartido para que db_creator.py (que la configura a nivel de BD)
+# y telemetry-worker.py (que la fuerza por sesion, ver connect_db) usen
+# siempre el mismo valor.
+DB_TIMEZONE = "America/Guatemala"
+
 
 def require_database_url() -> str:
     if not DATABASE_URL:

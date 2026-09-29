@@ -171,6 +171,14 @@ def connect_db(db_url: str):
         )
     conn = psycopg2.connect(db_url, sslmode="require")
     conn.autocommit = True
+    # Forzado explicito por sesion: el default a nivel de BD (ALTER DATABASE
+    # en db_creator.py) solo aplica a conexiones NUEVAS creadas despues de
+    # ejecutarlo. Una conexion de larga duracion (como esta, que vive todo
+    # el proceso) abierta antes de ese cambio se queda con el timezone
+    # anterior (UTC) para siempre. Esto garantiza la hora correcta sin
+    # depender del orden en que se hicieron las cosas.
+    with conn.cursor() as cur:
+        cur.execute(f"SET TIME ZONE '{config.DB_TIMEZONE}';")
     log_ok("Conectado a PostgreSQL")
     return conn
 

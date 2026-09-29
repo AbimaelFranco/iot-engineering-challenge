@@ -17,11 +17,11 @@ Uso:
 
 import psycopg2
 
-from config import require_database_url
-
-DB_TIMEZONE = "America/Guatemala"
+from config import DB_TIMEZONE, require_database_url
 
 # ---- mqtt_log: tabla maestra con el log crudo de todos los mensajes MQTT ----
+# logged_at es TIMESTAMPTZ(0): no hace falta precision de milisegundos, solo
+# fecha hora:minuto:segundo.
 CREATE_MQTT_LOG_SQL = """
 CREATE TABLE IF NOT EXISTS mqtt_log (
     id           BIGSERIAL PRIMARY KEY,
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS mqtt_log (
     qos          SMALLINT NOT NULL,
     payload_raw  TEXT NOT NULL,
     payload_json JSONB,
-    logged_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+    logged_at    TIMESTAMPTZ(0) NOT NULL DEFAULT now()
 );
 """
 
@@ -85,6 +85,16 @@ TABLES = [
     ("node_commands", CREATE_NODE_COMMANDS_SQL),
 ]
 
+# Migraciones sobre tablas que ya pudieron existir de una version anterior
+# del esquema (CREATE TABLE IF NOT EXISTS no las alcanza). Seguras de
+# re-ejecutar: no fallan ni pierden datos si ya estan aplicadas.
+MIGRATIONS = [
+    (
+        "mqtt_log.logged_at -> TIMESTAMPTZ(0)",
+        "ALTER TABLE mqtt_log ALTER COLUMN logged_at TYPE TIMESTAMPTZ(0);",
+    ),
+]
+
 
 def set_database_timezone(cur):
     cur.execute("SELECT current_database();")
@@ -103,9 +113,16 @@ def main():
     try:
         with conn.cursor() as cur:
             set_database_timezone(cur)
+            # El ALTER DATABASE de arriba solo afecta conexiones nuevas
+            # futuras; se fuerza tambien en esta sesion para que quede
+            # consistente desde ya.
+            cur.execute(f"SET TIME ZONE '{DB_TIMEZONE}';")
             for name, sql in TABLES:
                 cur.execute(sql)
                 print(f"[OK] Tabla '{name}' lista")
+            for description, sql in MIGRATIONS:
+                cur.execute(sql)
+                print(f"[OK] Migracion aplicada: {description}")
     finally:
         conn.close()
 

@@ -99,13 +99,23 @@ def on_connect(client, userdata, flags, reason_code, properties=None):
     if reason_code == 0:
         print(f"[OK] Conectado a MQTT {userdata['host']}:{userdata['port']}")
         client.subscribe(userdata["topic"], qos=1)
-        print(f"[OK] Suscrito a '{userdata['topic']}'\n")
+        print(f"[OK] Solicitada suscripcion a '{userdata['topic']}', esperando SUBACK...")
     else:
         print(f"[ERROR] Fallo de conexion MQTT, codigo: {reason_code}")
 
 
 def on_disconnect(client, userdata, *args):
     print("[WARN] Desconectado del broker MQTT")
+
+
+def on_subscribe(client, userdata, mid, reason_codes, properties=None):
+    # reason_code >= 128 significa que el broker denego la suscripcion
+    # (p.ej. el usuario MQTT no tiene permiso de "Subscribe" sobre el topic).
+    codes = [rc.value if hasattr(rc, "value") else rc for rc in reason_codes]
+    if any(c >= 128 for c in codes):
+        print(f"[ERROR] Suscripcion a '{userdata['topic']}' RECHAZADA por el broker, codigos: {codes}")
+    else:
+        print(f"[OK] Suscrito a '{userdata['topic']}', codigos: {codes}\n")
 
 
 def make_on_message(conn):
@@ -134,6 +144,11 @@ def make_on_message(conn):
 
 
 def main():
+    # Fuerza salida sin buffer: si no, en plataformas como Render (sin
+    # PYTHONUNBUFFERED, sin TTY) los print() no aparecen en los logs hasta
+    # que el buffer se llena, dando la falsa impresion de que no pasa nada.
+    sys.stdout.reconfigure(line_buffering=True)
+
     args = parse_args()
 
     start_health_server()
@@ -152,6 +167,7 @@ def main():
 
     client.on_connect = on_connect
     client.on_disconnect = on_disconnect
+    client.on_subscribe = on_subscribe
     client.on_message = make_on_message(conn)
 
     print(f"Conectando a MQTT {args.host}:{args.port} (TLS={'no' if args.no_tls else 'si'})...")

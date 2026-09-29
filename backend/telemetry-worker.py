@@ -41,6 +41,34 @@ INSERT INTO mqtt_log (topic, qos, payload_raw, payload_json)
 VALUES (%s, %s, %s, %s);
 """
 
+# Colores ANSI para distinguir el tipo de evento de un vistazo en los logs
+# (Render, Docker y la mayoria de terminales los interpretan bien).
+_RESET = "\033[0m"
+_GREEN = "\033[32m"
+_RED = "\033[31m"
+_YELLOW = "\033[33m"
+_CYAN = "\033[36m"
+
+
+def _timestamp():
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def log_ok(msg):
+    print(f"{_GREEN}[OK]{_RESET}    {_timestamp()} {msg}")
+
+
+def log_warn(msg):
+    print(f"{_YELLOW}[WARN]{_RESET}  {_timestamp()} {msg}")
+
+
+def log_error(msg):
+    print(f"{_RED}[ERROR]{_RESET} {_timestamp()} {msg}")
+
+
+def log_info(msg):
+    print(f"{_CYAN}[INFO]{_RESET}  {_timestamp()} {msg}")
+
 
 class HealthHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -57,7 +85,7 @@ def start_health_server():
     port = int(os.environ.get("PORT", "8080"))
     server = HTTPServer(("0.0.0.0", port), HealthHandler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
-    print(f"[OK] Health check HTTP escuchando en :{port}")
+    log_ok(f"Health check HTTP escuchando en :{port}")
 
 
 def parse_args():
@@ -80,7 +108,7 @@ def connect_db(db_url: str):
         )
     conn = psycopg2.connect(db_url, sslmode="require")
     conn.autocommit = True
-    print("[OK] Conectado a PostgreSQL")
+    log_ok("Conectado a PostgreSQL")
     return conn
 
 
@@ -97,15 +125,15 @@ def try_parse_json(raw: bytes):
 
 def on_connect(client, userdata, flags, reason_code, properties=None):
     if reason_code == 0:
-        print(f"[OK] Conectado a MQTT {userdata['host']}:{userdata['port']}")
+        log_ok(f"Conectado a MQTT {userdata['host']}:{userdata['port']}")
         client.subscribe(userdata["topic"], qos=1)
-        print(f"[OK] Solicitada suscripcion a '{userdata['topic']}', esperando SUBACK...")
+        log_info(f"Solicitada suscripcion a '{userdata['topic']}', esperando SUBACK...")
     else:
-        print(f"[ERROR] Fallo de conexion MQTT, codigo: {reason_code}")
+        log_error(f"Fallo de conexion MQTT, codigo: {reason_code}")
 
 
 def on_disconnect(client, userdata, *args):
-    print("[WARN] Desconectado del broker MQTT")
+    log_warn("Desconectado del broker MQTT")
 
 
 def on_subscribe(client, userdata, mid, reason_codes, properties=None):
@@ -113,9 +141,9 @@ def on_subscribe(client, userdata, mid, reason_codes, properties=None):
     # (p.ej. el usuario MQTT no tiene permiso de "Subscribe" sobre el topic).
     codes = [rc.value if hasattr(rc, "value") else rc for rc in reason_codes]
     if any(c >= 128 for c in codes):
-        print(f"[ERROR] Suscripcion a '{userdata['topic']}' RECHAZADA por el broker, codigos: {codes}")
+        log_error(f"Suscripcion a '{userdata['topic']}' RECHAZADA por el broker, codigos: {codes}")
     else:
-        print(f"[OK] Suscrito a '{userdata['topic']}', codigos: {codes}\n")
+        log_ok(f"Suscrito a '{userdata['topic']}', codigos: {codes}")
 
 
 def make_on_message(conn):
@@ -135,10 +163,9 @@ def make_on_message(conn):
                         json.dumps(data) if data is not None else None,
                     ),
                 )
-            ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print(f"[{ts}] topic={msg.topic} qos={msg.qos} payload={raw_text}")
+            log_ok(f"Guardado en DB | topic={msg.topic} qos={msg.qos} payload={raw_text}")
         except Exception as e:
-            print(f"[ERROR] No se pudo guardar el mensaje de '{msg.topic}': {e}")
+            log_error(f"No se pudo guardar el mensaje de '{msg.topic}': {e}")
 
     return on_message
 
@@ -170,17 +197,17 @@ def main():
     client.on_subscribe = on_subscribe
     client.on_message = make_on_message(conn)
 
-    print(f"Conectando a MQTT {args.host}:{args.port} (TLS={'no' if args.no_tls else 'si'})...")
+    log_info(f"Conectando a MQTT {args.host}:{args.port} (TLS={'no' if args.no_tls else 'si'})...")
     try:
         client.connect(args.host, args.port, keepalive=60)
     except Exception as e:
-        print(f"[ERROR] No se pudo conectar al broker MQTT: {e}")
+        log_error(f"No se pudo conectar al broker MQTT: {e}")
         sys.exit(1)
 
     try:
         client.loop_forever()
     except KeyboardInterrupt:
-        print("\nSaliendo...")
+        log_warn("Saliendo...")
         client.disconnect()
         conn.close()
 

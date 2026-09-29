@@ -1,0 +1,28 @@
+# Unidad systemd que mantiene arriba el contenedor Docker del telemetry
+# worker: lo levanta al bootear el host y lo reinicia si se cae.
+#
+# Instalacion (en el servidor Linux de destino):
+#   1. Ajustar WorkingDirectory abajo a la ruta real donde quede clonado
+#      el repo (p. ej. /opt/iot-engineering-challenge).
+#   2. sudo cp deploy/systemd/telemetry-worker.service /etc/systemd/system/
+#   3. sudo systemctl daemon-reload
+#   4. sudo systemctl enable --now telemetry-worker.service
+#
+# Verificar con: systemctl status telemetry-worker / journalctl -u telemetry-worker -f
+
+[Unit]
+Description=IoT Challenge - Telemetry Worker (MQTT -> PostgreSQL)
+After=docker.service network-online.target
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/iot-engineering-challenge
+ExecStart=/usr/bin/docker compose up --build
+ExecStop=/usr/bin/docker compose down
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

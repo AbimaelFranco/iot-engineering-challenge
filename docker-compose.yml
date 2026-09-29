@@ -1,0 +1,8 @@
+services:
+  telemetry-worker:
+    build: ./backend
+    image: iot-challenge-telemetry-worker:latest
+    container_name: telemetry-worker
+    env_file:
+      - ./backend/.env
+    restart: unless-stopped

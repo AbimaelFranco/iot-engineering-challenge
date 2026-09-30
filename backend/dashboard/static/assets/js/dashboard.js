@@ -471,6 +471,325 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // -----------------------------------------------------------------
+    // 2d. Tiempo Real Page: Primary Trend Chart (Line Chart with Markers)
+    // -----------------------------------------------------------------
+    const tiemporealPrimaryEl = document.querySelector('#tiemporeal-primary-chart');
+    if (tiemporealPrimaryEl) {
+        const temp = window.TIEMPOREAL_THRESHOLDS || { tempMin: 18, tempMax: 30 };
+
+        const tiemporealPrimaryOptions = {
+            series: [
+                {
+                    name: 'Nodo A',
+                    data: [19.5, 22.0, 25.5, 31.0, 28.0, 24.0, 20.0, 17.5]
+                },
+                {
+                    name: 'Nodo B',
+                    data: [21.0, 23.5, 26.0, 29.5, 27.0, 22.5, 18.5, 16.0]
+                }
+            ],
+            chart: {
+                type: 'line',
+                height: 420,
+                animations: {
+                    enabled: false
+                },
+                toolbar: {
+                    show: false
+                },
+                zoom: {
+                    enabled: false
+                },
+                fontFamily: 'Plus Jakarta Sans, sans-serif'
+            },
+            colors: ['#072F1F', '#B4F105'],
+            states: {
+                hover: {
+                    filter: {
+                        type: 'none'
+                    }
+                }
+            },
+            markers: {
+                size: 4,
+                strokeWidth: 2,
+                strokeColors: '#FFFFFF',
+                hover: {
+                    size: 6
+                }
+            },
+            dataLabels: {
+                enabled: false
+            },
+            stroke: {
+                curve: 'smooth',
+                width: 3
+            },
+            legend: {
+                show: false // Custom legends are drawn statically in HTML to match reference layout
+            },
+            grid: {
+                borderColor: '#E9EFEF',
+                strokeDashArray: 4,
+                yaxis: {
+                    lines: {
+                        show: true
+                    }
+                },
+                xaxis: {
+                    lines: {
+                        show: false
+                    }
+                },
+                padding: {
+                    top: 0,
+                    right: 0,
+                    bottom: 0,
+                    left: 0
+                }
+            },
+            xaxis: {
+                categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
+                labels: {
+                    style: {
+                        colors: '#6C7E75',
+                        fontSize: '11px',
+                        fontWeight: 500
+                    }
+                },
+                axisBorder: {
+                    show: false
+                },
+                axisTicks: {
+                    show: false
+                }
+            },
+            yaxis: {
+                labels: {
+                    show: false
+                }
+            },
+            fill: {
+                opacity: 1
+            },
+            tooltip: {
+                y: {
+                    formatter: function (val) {
+                        return val + " °C";
+                    }
+                },
+                theme: 'dark'
+            },
+            annotations: {
+                yaxis: [
+                    {
+                        y: temp.tempMax,
+                        y2: temp.tempMax + 100,
+                        fillColor: 'url(#dangerHatch)',
+                        opacity: 0.5,
+                        borderColor: 'transparent'
+                    },
+                    {
+                        y: temp.tempMin - 100,
+                        y2: temp.tempMin,
+                        fillColor: 'url(#dangerHatch)',
+                        opacity: 0.5,
+                        borderColor: 'transparent'
+                    },
+                    {
+                        y: temp.tempMax,
+                        borderColor: '#EF4444',
+                        strokeDashArray: 4,
+                        label: {
+                            text: 'Max ' + temp.tempMax + '°C',
+                            position: 'left',
+                            offsetX: 40,
+                            style: {
+                                color: '#FFFFFF',
+                                background: '#EF4444',
+                                fontSize: '10px'
+                            }
+                        }
+                    },
+                    {
+                        y: temp.tempMin,
+                        borderColor: '#EF4444',
+                        strokeDashArray: 4,
+                        label: {
+                            text: 'Min ' + temp.tempMin + '°C',
+                            position: 'left',
+                            offsetX: 40,
+                            style: {
+                                color: '#FFFFFF',
+                                background: '#EF4444',
+                                fontSize: '10px'
+                            }
+                        }
+                    }
+                ]
+            }
+        };
+
+        const tiemporealPrimaryChart = new ApexCharts(tiemporealPrimaryEl, tiemporealPrimaryOptions);
+        tiemporealPrimaryChart.render();
+    }
+
+    // -----------------------------------------------------------------
+    // 2e. Tiempo Real Page: Secondary Trend Chart (Line Chart with Markers)
+    // -----------------------------------------------------------------
+    const tiemporealSecondaryEl = document.querySelector('#tiemporeal-secondary-chart');
+    if (tiemporealSecondaryEl) {
+        const hum = window.TIEMPOREAL_THRESHOLDS || { humMin: 30, humMax: 70 };
+
+        const tiemporealSecondaryOptions = {
+            series: [
+                {
+                    name: 'Nodo A',
+                    data: [45, 52, 60, 75, 68, 55, 40]
+                },
+                {
+                    name: 'Nodo B',
+                    data: [50, 58, 65, 72, 62, 48, 35]
+                }
+            ],
+            chart: {
+                type: 'line',
+                height: 420,
+                animations: {
+                    enabled: false
+                },
+                toolbar: {
+                    show: false
+                },
+                zoom: {
+                    enabled: false
+                },
+                fontFamily: 'Plus Jakarta Sans, sans-serif'
+            },
+            colors: ['#072F1F', '#B4F105'],
+            states: {
+                hover: {
+                    filter: {
+                        type: 'none'
+                    }
+                }
+            },
+            markers: {
+                size: 4,
+                strokeWidth: 2,
+                strokeColors: '#FFFFFF',
+                hover: {
+                    size: 6
+                }
+            },
+            dataLabels: {
+                enabled: false
+            },
+            stroke: {
+                curve: 'smooth',
+                width: 3
+            },
+            legend: {
+                show: false // Custom legends are drawn statically in HTML to match reference layout
+            },
+            grid: {
+                borderColor: '#E9EFEF',
+                strokeDashArray: 4,
+                yaxis: {
+                    lines: {
+                        show: true
+                    }
+                },
+                xaxis: {
+                    lines: {
+                        show: false
+                    }
+                }
+            },
+            xaxis: {
+                categories: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
+                labels: {
+                    style: {
+                        colors: '#6C7E75',
+                        fontSize: '11px',
+                        fontWeight: 500
+                    }
+                },
+                axisBorder: {
+                    show: false
+                },
+                axisTicks: {
+                    show: false
+                }
+            },
+            yaxis: {
+                labels: {
+                    show: false
+                }
+            },
+            tooltip: {
+                y: {
+                    formatter: function (val) {
+                        return val + " %";
+                    }
+                },
+                theme: 'dark'
+            },
+            annotations: {
+                yaxis: [
+                    {
+                        y: hum.humMax,
+                        y2: hum.humMax + 100,
+                        fillColor: 'url(#dangerHatch)',
+                        opacity: 0.5,
+                        borderColor: 'transparent'
+                    },
+                    {
+                        y: hum.humMin - 100,
+                        y2: hum.humMin,
+                        fillColor: 'url(#dangerHatch)',
+                        opacity: 0.5,
+                        borderColor: 'transparent'
+                    },
+                    {
+                        y: hum.humMax,
+                        borderColor: '#EF4444',
+                        strokeDashArray: 4,
+                        label: {
+                            text: 'Max ' + hum.humMax + '%',
+                            position: 'left',
+                            offsetX: 40,
+                            style: {
+                                color: '#FFFFFF',
+                                background: '#EF4444',
+                                fontSize: '10px'
+                            }
+                        }
+                    },
+                    {
+                        y: hum.humMin,
+                        borderColor: '#EF4444',
+                        strokeDashArray: 4,
+                        label: {
+                            text: 'Min ' + hum.humMin + '%',
+                            position: 'left',
+                            offsetX: 40,
+                            style: {
+                                color: '#FFFFFF',
+                                background: '#EF4444',
+                                fontSize: '10px'
+                            }
+                        }
+                    }
+                ]
+            }
+        };
+
+        const tiemporealSecondaryChart = new ApexCharts(tiemporealSecondaryEl, tiemporealSecondaryOptions);
+        tiemporealSecondaryChart.render();
+    }
+
+    // -----------------------------------------------------------------
     // 3. Total View Performance Chart (Donut Chart)
     // -----------------------------------------------------------------
     const viewsChartEl = document.querySelector('#views-chart');

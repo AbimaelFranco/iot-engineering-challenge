@@ -25,7 +25,9 @@
           </a>
         </li>
         <li class="sidebar-menu-item">
-          <a href="#" class="sidebar-menu-link" id="menu-realtime" title="Datos en tiempo real">
+          <a href="{% url 'tiemporeal' %}"
+            class="sidebar-menu-link{% if request.resolver_match.url_name == 'tiemporeal' %} active{% endif %}"
+            id="menu-realtime" title="Datos en tiempo real">
             <i class="bi bi-activity"></i>
             <span>Datos en tiempo real</span>
           </a>

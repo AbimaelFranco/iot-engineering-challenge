@@ -1,0 +1,280 @@
+{% extends 'base.html' %}
+
+{% block title %}Datos en Tiempo Real - IoT Admin{% endblock %}
+
+{% block content %}
+    <!-- START: Dashboard Header Banner -->
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Datos en Tiempo Real</h1>
+        <p class="page-subtitle">Monitorea las lecturas actuales reportadas por los nodos.</p>
+      </div>
+      <button class="btn-date-picker" type="button" id="date-picker-trigger">
+        <i class="bi bi-calendar4-event"></i>
+        <span id="selected-date-range">Enero 12, 2026 - Enero 23, 2026</span>
+        <i class="bi bi-chevron-down ms-1"></i>
+      </button>
+    </div>
+    <!-- END: Dashboard Header Banner -->
+
+    <!-- START: Main Layout Grid (2 Columns: Dashboard + Performance Pane) -->
+    <div class="row g-4">
+
+      <!-- TOP AREA: Quick Info Stat Cards Row (Full Width) -->
+      <div class="col-12">
+        <div class="row g-4">
+          <!-- Stat Card 1: Green Alert Banner -->
+          <div class="col-md-4">
+            <div class="card alert-green-card">
+              <div class="position-relative z-index-2">
+                <span class="alert-green-badge">Update</span>
+                <div class="alert-green-date">Feb 14th 2026</div>
+                <div class="alert-green-text">Sales revenue increased 40% in 1 week</div>
+              </div>
+              <a href="#" class="alert-green-link z-index-2" id="alert-link-statistics">
+                <span>See Statistics</span>
+                <i class="bi bi-arrow-right"></i>
+              </a>
+
+              <!-- Inline SVG geometric decoration (Lime green 6-pointed star/asterisk with rounded caps) -->
+              <svg class="alert-green-bg-shape" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <g transform="translate(50,50)">
+                  <rect x="-6" y="-45" width="12" height="90" rx="6" ry="6" fill="#B4F105" />
+                  <rect x="-6" y="-45" width="12" height="90" rx="6" ry="6" fill="#B4F105" transform="rotate(60)" />
+                  <rect x="-6" y="-45" width="12" height="90" rx="6" ry="6" fill="#B4F105" transform="rotate(120)" />
+                </g>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Stat Card 2: Temperatura -->
+          <div class="col-md-4">
+            <div class="card card-stat">
+              <!-- Subtle background icon: decorative only, must not outrank the text -->
+              <i class="bi bi-thermometer-half stat-icon-bg" aria-hidden="true"></i>
+              <div class="position-relative z-index-2">
+                <div class="card-header">
+                  <span class="stat-label">Temperatura</span>
+                  <div class="dropdown">
+                    <button class="card-more-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false"
+                      aria-label="More Options" id="btn-more-income">
+                      <i class="bi bi-three-dots"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end dropdown-menu-custom">
+                      <li><a class="dropdown-item" href="#"><i class="bi bi-arrow-repeat"></i> Refresh</a></li>
+                      <li><a class="dropdown-item" href="#"><i class="bi bi-file-earmark-arrow-down"></i> Export
+                          Report</a></li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-eye-slash"></i> Hide Details</a>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+                <div class="d-flex align-items-center justify-content-between">
+                  <div>
+                    <div class="stat-value">{{ temp_avg }}°C</div>
+                    <span class="fs-xs">valor promedio</span>
+                  </div>
+                  <div class="d-flex flex-column gap-2">
+                    <div class="chart-legend-item">
+                      <span class="legend-dot bg-forest-medium"></span>
+                      <span>Nodo A: {{ temp_avg_a }}°C</span>
+                    </div>
+                    <div class="chart-legend-item">
+                      <span class="legend-dot bg-lime-accent"></span>
+                      <span>Nodo B: {{ temp_avg_b }}°C</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stat Card 3: Humedad -->
+          <div class="col-md-4">
+            <div class="card card-stat">
+              <!-- Subtle background icon: decorative only, must not outrank the text -->
+              <i class="bi bi-droplet-half stat-icon-bg" aria-hidden="true"></i>
+              <div class="position-relative z-index-2">
+                <div class="card-header">
+                  <span class="stat-label">Humedad</span>
+                  <div class="dropdown">
+                    <button class="card-more-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false"
+                      aria-label="More Options" id="btn-more-return">
+                      <i class="bi bi-three-dots"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end dropdown-menu-custom">
+                      <li><a class="dropdown-item" href="#"><i class="bi bi-arrow-repeat"></i> Refresh</a></li>
+                      <li><a class="dropdown-item" href="#"><i class="bi bi-file-earmark-arrow-down"></i> Export
+                          Report</a></li>
+                      <li>
+                        <hr class="dropdown-divider">
+                      </li>
+                      <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-eye-slash"></i> Hide Details</a>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+                <div class="d-flex align-items-center justify-content-between">
+                  <div>
+                    <div class="stat-value">{{ hum_avg }}%</div>
+                    <span class="fs-xs">valor promedio</span>
+                  </div>
+                  <div class="d-flex flex-column gap-2">
+                    <div class="chart-legend-item">
+                      <span class="legend-dot bg-forest-medium"></span>
+                      <span>Nodo A: {{ hum_avg_a }}%</span>
+                    </div>
+                    <div class="chart-legend-item">
+                      <span class="legend-dot bg-lime-accent"></span>
+                      <span>Nodo B: {{ hum_avg_b }}%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- END: TOP AREA -->
+
+      <!-- LEFT AREA: Primary Dashboard Stats & Tables -->
+      <div class="col-xl-9 col-lg-8">
+
+        <!-- START: Details Area (Transactions + Performance Charts) -->
+        <div class="row g-4">
+          <!-- Column: Revenue Chart (Full Width / Wider) -->
+          <div class="col-12">
+            <div class="card mb-0">
+              <div class="card-header mb-2">
+                <h2 class="card-title">Temperatura</h2>
+                <!-- Custom Static Legends -->
+                <div class="d-flex gap-3 align-items-center">
+                  <div class="chart-legend-item">
+                    <span class="legend-dot bg-forest-medium"></span>
+                    <span class="chart-legend-label">Nodo A</span>
+                  </div>
+                  <div class="chart-legend-item">
+                    <span class="legend-dot bg-lime-accent"></span>
+                    <span class="chart-legend-label">Nodo B</span>
+                  </div>
+                </div>
+              </div>
+              <div id="tiemporeal-primary-chart"></div>
+            </div>
+          </div>
+
+          <!-- Column: Secondary Trend Chart -->
+          <div class="col-12">
+            <div class="card mb-0">
+              <div class="card-header mb-2">
+                <h2 class="card-title">Humedad</h2>
+                <!-- Custom Static Legends -->
+                <div class="d-flex gap-3 align-items-center">
+                  <div class="chart-legend-item">
+                    <span class="legend-dot bg-forest-medium"></span>
+                    <span class="chart-legend-label">Nodo A</span>
+                  </div>
+                  <div class="chart-legend-item">
+                    <span class="legend-dot bg-lime-accent"></span>
+                    <span class="chart-legend-label">Nodo B</span>
+                  </div>
+                </div>
+              </div>
+              <div id="tiemporeal-secondary-chart"></div>
+            </div>
+          </div>
+        </div>
+        <!-- END: Details Area -->
+
+      </div>
+
+      <!-- RIGHT AREA: Performance Details Sidebar Panel -->
+      <div class="col-xl-3 col-lg-4">
+        <div class="right-panel-wrapper d-flex flex-column gap-4 h-100">
+
+          <!-- Performance Donut Chart card -->
+          <div class="card flex-grow-1 d-flex flex-column justify-content-between mb-0">
+            <div class="card-header mb-1">
+              <h2 class="card-title">Total View Performance</h2>
+            </div>
+
+            <div id="views-chart"></div>
+
+            <!-- Custom Legends below the chart -->
+            <div class="chart-legends-container">
+              <div class="chart-legend-item">
+                <span class="legend-dot bg-lime-accent"></span>
+                <span class="text-muted-green">View Count</span>
+              </div>
+              <div class="chart-legend-item">
+                <span class="legend-dot bg-forest-medium"></span>
+                <span class="text-muted-green">Percentage</span>
+              </div>
+              <div class="chart-legend-item">
+                <span class="legend-dot bg-brand-orange"></span>
+                <span class="text-muted-green">Sales</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Alert Thresholds Card -->
+          <div class="promo-banner-card">
+            <!-- Inline SVG geometric decoration (subtle, close to card background so it doesn't compete with the text) -->
+            <svg class="promo-banner-bg-shape" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <g transform="translate(50,50)">
+                <rect x="-6" y="-45" width="12" height="90" rx="6" ry="6" fill="#CBD2C3" />
+                <rect x="-6" y="-45" width="12" height="90" rx="6" ry="6" fill="#CBD2C3" transform="rotate(60)" />
+                <rect x="-6" y="-45" width="12" height="90" rx="6" ry="6" fill="#CBD2C3" transform="rotate(120)" />
+              </g>
+            </svg>
+
+            <h3 class="promo-title">Parametros de Alerta</h3>
+
+            <div class="position-relative z-index-2">
+              <div class="progress-container">
+                <div class="progress-label-row">
+                  <span class="progress-label">Temperatura minima</span>
+                  <span class="progress-value">{{ temp_min }}°C</span>
+                </div>
+              </div>
+              <div class="progress-container">
+                <div class="progress-label-row">
+                  <span class="progress-label">Temperatura maxima</span>
+                  <span class="progress-value">{{ temp_max }}°C</span>
+                </div>
+              </div>
+              <div class="progress-container">
+                <div class="progress-label-row">
+                  <span class="progress-label">Humedad minima</span>
+                  <span class="progress-value">{{ hum_min }}%</span>
+                </div>
+              </div>
+              <div class="progress-container mb-0">
+                <div class="progress-label-row">
+                  <span class="progress-label">Humedad maxima</span>
+                  <span class="progress-value">{{ hum_max }}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- END: RIGHT AREA -->
+
+    </div>
+    <!-- END: Main Layout Grid -->
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  window.TIEMPOREAL_THRESHOLDS = {
+    tempMin: {{ temp_min }},
+    tempMax: {{ temp_max }},
+    humMin: {{ hum_min }},
+    humMax: {{ hum_max }}
+  };
+</script>
+{% endblock %}

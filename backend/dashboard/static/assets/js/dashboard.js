@@ -185,7 +185,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 },
                 fontFamily: 'Plus Jakarta Sans, sans-serif'
             },
-            colors: ['#072F1F', '#B4F105'],
+            colors: ['#072F1F', '#F97316'],
             states: {
                 hover: {
                     filter: {
@@ -362,7 +362,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 },
                 fontFamily: 'Plus Jakarta Sans, sans-serif'
             },
-            colors: ['#072F1F', '#B4F105'],
+            colors: ['#072F1F', '#F97316'],
             states: {
                 hover: {
                     filter: {

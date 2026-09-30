@@ -27,6 +27,16 @@
 
 <body>
 
+  <!-- Reusable SVG pattern for chart danger-zone shading (out-of-range areas) -->
+  <svg width="0" height="0" style="position: absolute;" aria-hidden="true">
+    <defs>
+      <pattern id="dangerHatch" width="8" height="8" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+        <rect width="8" height="8" fill="transparent"></rect>
+        <line x1="0" y1="0" x2="0" y2="8" stroke="#EF4444" stroke-width="3"></line>
+      </pattern>
+    </defs>
+  </svg>
+
   {% include 'partials/sidebar.html' %}
 
   <!-- ==========================================
@@ -49,6 +59,7 @@
   <script src="{% static 'assets/libs/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
   <script src="{% static 'assets/libs/apexcharts/apexcharts.min.js' %}"></script>
   <script src="{% static 'assets/libs/flatpickr/flatpickr.min.js' %}"></script>
+  <script src="{% static 'assets/libs/flatpickr/l10n/es.js' %}"></script>
 
   <!-- Local dashboard interactions controller -->
   <script src="{% static 'assets/js/dashboard.js' %}"></script>

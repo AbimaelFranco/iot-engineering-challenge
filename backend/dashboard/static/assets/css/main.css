@@ -185,6 +185,17 @@ a:hover {
     color: var(--brand-lime-hover);
 }
 
+.sidebar-brand-icon {
+    width: 1.5rem;
+    height: 1.5rem;
+    flex-shrink: 0;
+    transition: transform 0.3s ease;
+}
+
+.sidebar-brand:hover .sidebar-brand-icon {
+    transform: scale(1.1) rotate(90deg);
+}
+
 .sidebar-menu-section {
     margin-bottom: 1.75rem;
 }
@@ -1210,6 +1221,19 @@ body.sidebar-minimized .sidebar-profile {
     height: 140px;
     opacity: 0.95;
     pointer-events: none;
+    transform-origin: center;
+    animation: promoIconSpin 30s linear infinite;
+}
+
+/* Slow idle spin: this card has no hover trigger like alert-green-card, so
+   the motion is continuous but subtle enough not to distract. */
+@keyframes promoIconSpin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .promo-title {

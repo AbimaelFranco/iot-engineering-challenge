@@ -373,45 +373,4 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // -----------------------------------------------------------------
-    // 7. Fullscreen Toggle Interaction
-    // -----------------------------------------------------------------
-    const fullscreenBtn = document.querySelector('#btn-fullscreen');
-    if (fullscreenBtn) {
-        fullscreenBtn.addEventListener('click', function () {
-            if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen().then(() => {
-                    updateFullscreenIcon(true);
-                }).catch(err => {
-                    console.error(`Error attempting to enable fullscreen mode: ${err.message}`);
-                });
-            } else {
-                document.exitFullscreen().then(() => {
-                    updateFullscreenIcon(false);
-                }).catch(err => {
-                    console.error(`Error attempting to exit fullscreen mode: ${err.message}`);
-                });
-            }
-        });
-
-        function updateFullscreenIcon(isFullscreen) {
-            const icon = fullscreenBtn.querySelector('i');
-            if (icon) {
-                if (isFullscreen) {
-                    icon.className = 'bi bi-fullscreen-exit';
-                } else {
-                    icon.className = 'bi bi-arrows-fullscreen';
-                }
-            }
-        }
-
-        // Listen for browser native fullscreen changes (e.g. Esc key)
-        document.addEventListener('fullscreenchange', () => {
-            if (document.fullscreenElement) {
-                updateFullscreenIcon(true);
-            } else {
-                updateFullscreenIcon(false);
-            }
-        });
-    }
 });

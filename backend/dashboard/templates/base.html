@@ -1,0 +1,58 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}IoT Admin{% endblock %}</title>
+
+  <!-- SEO Optimization -->
+  <meta name="description" content="IoT Admin - plataforma de monitoreo y control de nodos IoT">
+  <meta name="author" content="IoT Admin">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="{% static 'assets/images/favicon.ico' %}">
+
+  <!-- Local Third-Party Libraries (100% Offline Compatible) -->
+  <link rel="stylesheet" href="{% static 'assets/libs/bootstrap/css/bootstrap.min.css' %}">
+  <link rel="stylesheet" href="{% static 'assets/libs/bootstrap-icons/bootstrap-icons.css' %}">
+  <link rel="stylesheet" href="{% static 'assets/libs/apexcharts/apexcharts.css' %}">
+  <link rel="stylesheet" href="{% static 'assets/libs/flatpickr/flatpickr.min.css' %}">
+
+  <!-- Main Design System & Custom Stylesheet -->
+  <link rel="stylesheet" href="{% static 'assets/css/main.css' %}">
+  {% block extra_css %}{% endblock %}
+</head>
+
+<body>
+
+  {% include 'partials/sidebar.html' %}
+
+  <!-- ==========================================
+         START: Main Content Area
+         ========================================== -->
+  <div class="main-wrapper">
+
+    {% include 'partials/navbar.html' %}
+
+    {% block content %}{% endblock %}
+
+    {% include 'partials/footer.html' %}
+
+  </div>
+  <!-- ==========================================
+         END: Main Content Area
+         ========================================== -->
+
+  <!-- Local Third-Party Libraries Script dependencies -->
+  <script src="{% static 'assets/libs/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+  <script src="{% static 'assets/libs/apexcharts/apexcharts.min.js' %}"></script>
+  <script src="{% static 'assets/libs/flatpickr/flatpickr.min.js' %}"></script>
+
+  <!-- Local dashboard interactions controller -->
+  <script src="{% static 'assets/js/dashboard.js' %}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+
+</html>

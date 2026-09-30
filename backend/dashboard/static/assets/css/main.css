@@ -945,6 +945,23 @@ body.sidebar-minimized .sidebar-profile {
     animation: redPulse 2s infinite;
 }
 
+/* Subtle watermark icon on the Temperatura/Humedad stat cards - close to the
+   card's own background so it reads as texture, not as a competing icon */
+.stat-icon-bg {
+    position: absolute;
+    bottom: -1rem;
+    right: -0.75rem;
+    font-size: 8rem;
+    line-height: 1;
+    color: var(--border-light);
+    pointer-events: none;
+}
+
+/* Alert Thresholds Card: values need more contrast than the default muted tone */
+.promo-banner-card .progress-value {
+    color: var(--text-main);
+}
+
 @keyframes redPulse {
     0% {
         box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5);

@@ -152,21 +152,23 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // -----------------------------------------------------------------
-    // 2b. Historico Page: Primary Trend Chart (Line Chart with Markers)
+    // 2b. Historico Page: Primary Trend Chart (real node_readings data)
     // -----------------------------------------------------------------
     const historicoPrimaryEl = document.querySelector('#historico-primary-chart');
     if (historicoPrimaryEl) {
         const temp = window.HISTORICO_THRESHOLDS || { tempMin: 18, tempMax: 30 };
+        const dataEl = document.querySelector('#historico-chart-data');
+        const chartData = dataEl ? JSON.parse(dataEl.textContent) : {};
 
         const historicoPrimaryOptions = {
             series: [
                 {
                     name: 'Nodo A',
-                    data: [19.5, 22.0, 25.5, 31.0, 28.0, 24.0, 20.0, 17.5]
+                    data: chartData.tempSeriesA || []
                 },
                 {
                     name: 'Nodo B',
-                    data: [21.0, 23.5, 26.0, 29.5, 27.0, 22.5, 18.5, 16.0]
+                    data: chartData.tempSeriesB || []
                 }
             ],
             chart: {
@@ -230,8 +232,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             },
             xaxis: {
-                categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
+                type: 'datetime',
+                // El servidor ya recorta min/max a los datos reales del dia
+                // seleccionado (no fuerza un rango fijo de 24h).
+                min: chartData.xMin != null ? chartData.xMin : undefined,
+                max: chartData.xMax != null ? chartData.xMax : undefined,
                 labels: {
+                    datetimeUTC: true, // ver comentario de _to_epoch_ms en historico/views.py
                     style: {
                         colors: '#6C7E75',
                         fontSize: '11px',
@@ -253,10 +260,16 @@ document.addEventListener('DOMContentLoaded', function () {
             fill: {
                 opacity: 1
             },
+            noData: {
+                text: 'Sin lecturas para este dia'
+            },
             tooltip: {
+                x: {
+                    format: 'HH:mm:ss'
+                },
                 y: {
                     formatter: function (val) {
-                        return val + " °C";
+                        return val.toFixed(2) + " °C";
                     }
                 },
                 theme: 'dark'
@@ -316,21 +329,23 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // -----------------------------------------------------------------
-    // 2c. Historico Page: Secondary Trend Chart (Line Chart with Markers)
+    // 2c. Historico Page: Secondary Trend Chart (real node_readings data)
     // -----------------------------------------------------------------
     const historicoSecondaryEl = document.querySelector('#historico-secondary-chart');
     if (historicoSecondaryEl) {
         const hum = window.HISTORICO_THRESHOLDS || { humMin: 30, humMax: 70 };
+        const dataEl = document.querySelector('#historico-chart-data');
+        const chartData = dataEl ? JSON.parse(dataEl.textContent) : {};
 
         const historicoSecondaryOptions = {
             series: [
                 {
                     name: 'Nodo A',
-                    data: [45, 52, 60, 75, 68, 55, 40]
+                    data: chartData.humSeriesA || []
                 },
                 {
                     name: 'Nodo B',
-                    data: [50, 58, 65, 72, 62, 48, 35]
+                    data: chartData.humSeriesB || []
                 }
             ],
             chart: {
@@ -388,8 +403,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             },
             xaxis: {
-                categories: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
+                type: 'datetime',
+                min: chartData.xMin != null ? chartData.xMin : undefined,
+                max: chartData.xMax != null ? chartData.xMax : undefined,
                 labels: {
+                    datetimeUTC: true, // ver comentario de _to_epoch_ms en historico/views.py
                     style: {
                         colors: '#6C7E75',
                         fontSize: '11px',
@@ -408,10 +426,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     show: false
                 }
             },
+            noData: {
+                text: 'Sin lecturas para este dia'
+            },
             tooltip: {
+                x: {
+                    format: 'HH:mm:ss'
+                },
                 y: {
                     formatter: function (val) {
-                        return val + " %";
+                        return val.toFixed(2) + " %";
                     }
                 },
                 theme: 'dark'
@@ -982,6 +1006,25 @@ document.addEventListener('DOMContentLoaded', function () {
                 } else if (selectedDates.length === 1) {
                     const startStr = instance.formatDate(selectedDates[0], 'F j, Y');
                     selectedRangeText.textContent = startStr;
+                }
+            }
+        });
+    }
+
+    // -----------------------------------------------------------------
+    // 5b. Historico Page: Single-Day Picker (reloads with ?fecha=)
+    // -----------------------------------------------------------------
+    const historicoDatePickerTrigger = document.querySelector('#historico-date-picker-trigger');
+
+    if (historicoDatePickerTrigger) {
+        flatpickr(historicoDatePickerTrigger, {
+            mode: 'single',
+            dateFormat: 'Y-m-d',
+            locale: 'es',
+            defaultDate: window.HISTORICO_SELECTED_DATE || undefined,
+            onChange: function (selectedDates, dateStr) {
+                if (dateStr) {
+                    window.location.href = '?fecha=' + dateStr;
                 }
             }
         });

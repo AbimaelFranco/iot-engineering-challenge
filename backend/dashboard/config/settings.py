@@ -138,7 +138,12 @@ TIME_ZONE = 'America/Guatemala'
 
 USE_I18N = True
 
-USE_TZ = True
+# node_readings.reading_time (y las demas columnas de hora de esta misma
+# base) son TIMESTAMP *sin* zona horaria con la hora local de Guatemala ya
+# calculada - ver el comentario de GUATEMALA_TZ en backend/telemetry-worker.py.
+# Con USE_TZ=True Django asumiria que esos valores naive estan en UTC y los
+# recorreria mal; en False los toma tal cual, igual que el resto del backend.
+USE_TZ = False
 
 
 # Static files (CSS, JavaScript, Images)

@@ -9,9 +9,9 @@
         <h1 class="page-title">Datos Historicos</h1>
         <p class="page-subtitle">Consulta el historial de lecturas registradas por los nodos.</p>
       </div>
-      <button class="btn-date-picker" type="button" id="date-picker-trigger">
+      <button class="btn-date-picker" type="button" id="historico-date-picker-trigger">
         <i class="bi bi-calendar4-event"></i>
-        <span id="selected-date-range">Enero 12, 2026 - Enero 23, 2026</span>
+        <span id="historico-selected-date">{{ selected_date_display }}</span>
         <i class="bi bi-chevron-down ms-1"></i>
       </button>
     </div>
@@ -74,17 +74,17 @@
                 </div>
                 <div class="d-flex align-items-center justify-content-between">
                   <div>
-                    <div class="stat-value">{{ temp_avg }}°C</div>
+                    <div class="stat-value">{{ temp_avg|default:"--" }}°C</div>
                     <span class="fs-xs">valor promedio</span>
                   </div>
                   <div class="d-flex flex-column gap-2">
                     <div class="chart-legend-item">
                       <span class="legend-dot bg-forest-medium"></span>
-                      <span>Nodo A: {{ temp_avg_a }}°C</span>
+                      <span>Nodo A: {{ temp_avg_a|default:"--" }}°C</span>
                     </div>
                     <div class="chart-legend-item">
                       <span class="legend-dot bg-lime-accent"></span>
-                      <span>Nodo B: {{ temp_avg_b }}°C</span>
+                      <span>Nodo B: {{ temp_avg_b|default:"--" }}°C</span>
                     </div>
                   </div>
                 </div>
@@ -119,17 +119,17 @@
                 </div>
                 <div class="d-flex align-items-center justify-content-between">
                   <div>
-                    <div class="stat-value">{{ hum_avg }}%</div>
+                    <div class="stat-value">{{ hum_avg|default:"--" }}%</div>
                     <span class="fs-xs">valor promedio</span>
                   </div>
                   <div class="d-flex flex-column gap-2">
                     <div class="chart-legend-item">
                       <span class="legend-dot bg-forest-medium"></span>
-                      <span>Nodo A: {{ hum_avg_a }}%</span>
+                      <span>Nodo A: {{ hum_avg_a|default:"--" }}%</span>
                     </div>
                     <div class="chart-legend-item">
                       <span class="legend-dot bg-lime-accent"></span>
-                      <span>Nodo B: {{ hum_avg_b }}%</span>
+                      <span>Nodo B: {{ hum_avg_b|default:"--" }}%</span>
                     </div>
                   </div>
                 </div>
@@ -269,6 +269,7 @@
 {% endblock %}
 
 {% block extra_js %}
+{{ historico_chart_data|json_script:"historico-chart-data" }}
 <script>
   window.HISTORICO_THRESHOLDS = {
     tempMin: {{ temp_min }},
@@ -276,5 +277,6 @@
     humMin: {{ hum_min }},
     humMax: {{ hum_max }}
   };
+  window.HISTORICO_SELECTED_DATE = "{{ selected_date }}";
 </script>
 {% endblock %}

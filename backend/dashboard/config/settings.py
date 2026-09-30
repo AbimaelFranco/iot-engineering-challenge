@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 
 import os
 from pathlib import Path
+from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 
@@ -85,11 +86,26 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
+# Misma base PostgreSQL (Render) que usa backend/telemetry-worker.py, para
+# que el dashboard lea los datos que ese worker ya esta guardando.
+
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
+if not DATABASE_URL:
+    raise RuntimeError(
+        "DATABASE_URL no esta definida. Copia .env.example a .env y completa los valores."
+    )
+
+_db_url = urlparse(DATABASE_URL)
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': _db_url.path.lstrip('/'),
+        'USER': _db_url.username,
+        'PASSWORD': _db_url.password,
+        'HOST': _db_url.hostname,
+        'PORT': _db_url.port or 5432,
+        'OPTIONS': {'sslmode': 'require'},
     }
 }
 

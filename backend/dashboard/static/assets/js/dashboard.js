@@ -509,11 +509,18 @@ document.addEventListener('DOMContentLoaded', function () {
     // -----------------------------------------------------------------
     // 2d. Tiempo Real Page: Primary Trend Chart (real node_readings data)
     // -----------------------------------------------------------------
+    // Parseado una sola vez y compartido con el chart secundario (2e) y el
+    // stream MQTT en vivo (2f), que necesita conocer/actualizar xMax para
+    // extender el eje de tiempo conforme llegan lecturas nuevas.
+    const tiemporealDataEl = document.querySelector('#tiemporeal-chart-data');
+    const tiemporealChartData = tiemporealDataEl ? JSON.parse(tiemporealDataEl.textContent) : {};
+    let tiemporealPrimaryChart = null;
+    let tiemporealSecondaryChart = null;
+
     const tiemporealPrimaryEl = document.querySelector('#tiemporeal-primary-chart');
     if (tiemporealPrimaryEl) {
         const temp = window.TIEMPOREAL_THRESHOLDS || { tempMin: 18, tempMax: 30 };
-        const tiemporealDataEl = document.querySelector('#tiemporeal-chart-data');
-        const chartData = tiemporealDataEl ? JSON.parse(tiemporealDataEl.textContent) : {};
+        const chartData = tiemporealChartData;
 
         const tiemporealPrimaryOptions = {
             series: [
@@ -685,7 +692,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         };
 
-        const tiemporealPrimaryChart = new ApexCharts(tiemporealPrimaryEl, tiemporealPrimaryOptions);
+        tiemporealPrimaryChart = new ApexCharts(tiemporealPrimaryEl, tiemporealPrimaryOptions);
         tiemporealPrimaryChart.render();
     }
 
@@ -695,8 +702,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const tiemporealSecondaryEl = document.querySelector('#tiemporeal-secondary-chart');
     if (tiemporealSecondaryEl) {
         const hum = window.TIEMPOREAL_THRESHOLDS || { humMin: 30, humMax: 70 };
-        const tiemporealDataEl = document.querySelector('#tiemporeal-chart-data');
-        const chartData = tiemporealDataEl ? JSON.parse(tiemporealDataEl.textContent) : {};
+        const chartData = tiemporealChartData;
 
         const tiemporealSecondaryOptions = {
             series: [
@@ -857,8 +863,103 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         };
 
-        const tiemporealSecondaryChart = new ApexCharts(tiemporealSecondaryEl, tiemporealSecondaryOptions);
+        tiemporealSecondaryChart = new ApexCharts(tiemporealSecondaryEl, tiemporealSecondaryOptions);
         tiemporealSecondaryChart.render();
+    }
+
+    // -----------------------------------------------------------------
+    // 2f. Tiempo Real Page: Live Stream via Polling (sin credenciales en el navegador)
+    // -----------------------------------------------------------------
+    // En vez de que el navegador se conecte directo al broker MQTT (lo que
+    // expondria las credenciales en las devtools de cualquiera), se consulta
+    // periodicamente un endpoint propio (tiemporeal_latest) que lee de la
+    // misma base Postgres que ya llena backend/telemetry-worker.py.
+    const tiemporealLatestUrl = window.TIEMPOREAL_LATEST_URL;
+
+    if (tiemporealLatestUrl && (tiemporealPrimaryChart || tiemporealSecondaryChart)) {
+        function tiemporealAppendPoint(chart, seriesIndex, epochMs, value) {
+            if (!chart) {
+                return;
+            }
+            chart.appendData([0, 1, 2].map(function (i) {
+                return { data: i === seriesIndex ? [[epochMs, value]] : [] };
+            }));
+        }
+
+        function tiemporealExtendAxis(epochMs) {
+            if (tiemporealChartData.xMax != null && epochMs <= tiemporealChartData.xMax) {
+                return;
+            }
+            tiemporealChartData.xMax = epochMs;
+            const newMax = { xaxis: { max: epochMs } };
+            if (tiemporealPrimaryChart) {
+                tiemporealPrimaryChart.updateOptions(newMax, false, false);
+            }
+            if (tiemporealSecondaryChart) {
+                tiemporealSecondaryChart.updateOptions(newMax, false, false);
+            }
+        }
+
+        // Rastrea la ultima lectura de cada nodo dentro del minuto "en curso"
+        // para poder calcular el punto de Promedio en vivo igual que
+        // _series_promedio en el servidor: solo cuando ambos nodos
+        // reportaron dentro del mismo minuto.
+        let tiemporealPendingMinute = null;
+        let tiemporealPendingReadings = {};
+
+        function tiemporealProcessPoint(nodeId, epochMs, temp, hum) {
+            const seriesIndex = nodeId === 'nodo-a' ? 0 : 1;
+
+            tiemporealExtendAxis(epochMs);
+            tiemporealAppendPoint(tiemporealPrimaryChart, seriesIndex, epochMs, temp);
+            tiemporealAppendPoint(tiemporealSecondaryChart, seriesIndex, epochMs, hum);
+
+            const minuteKey = Math.floor(epochMs / 60000);
+            if (tiemporealPendingMinute !== minuteKey) {
+                tiemporealPendingMinute = minuteKey;
+                tiemporealPendingReadings = {};
+            }
+            tiemporealPendingReadings[nodeId] = { temp: temp, hum: hum };
+
+            if (tiemporealPendingReadings['nodo-a'] && tiemporealPendingReadings['nodo-b']) {
+                const avgTemp = Math.round(((tiemporealPendingReadings['nodo-a'].temp + tiemporealPendingReadings['nodo-b'].temp) / 2) * 10) / 10;
+                const avgHum = Math.round(((tiemporealPendingReadings['nodo-a'].hum + tiemporealPendingReadings['nodo-b'].hum) / 2) * 10) / 10;
+                tiemporealAppendPoint(tiemporealPrimaryChart, 2, epochMs, avgTemp);
+                tiemporealAppendPoint(tiemporealSecondaryChart, 2, epochMs, avgHum);
+            }
+        }
+
+        let tiemporealSince = tiemporealChartData.xMax || 0;
+        let tiemporealPolling = false;
+
+        function tiemporealPoll() {
+            if (tiemporealPolling) {
+                return;
+            }
+            tiemporealPolling = true;
+            fetch(tiemporealLatestUrl + '?since=' + tiemporealSince)
+                .then(function (res) { return res.json(); })
+                .then(function (data) {
+                    (data.tempSeriesA || []).forEach(function (point, i) {
+                        tiemporealProcessPoint('nodo-a', point[0], point[1], data.humSeriesA[i][1]);
+                    });
+                    (data.tempSeriesB || []).forEach(function (point, i) {
+                        tiemporealProcessPoint('nodo-b', point[0], point[1], data.humSeriesB[i][1]);
+                    });
+                    if (data.lastEpochMs != null) {
+                        tiemporealSince = data.lastEpochMs;
+                    }
+                })
+                .catch(function (err) {
+                    console.error('Error consultando lecturas nuevas:', err);
+                })
+                .finally(function () {
+                    tiemporealPolling = false;
+                });
+        }
+
+        tiemporealPoll();
+        setInterval(tiemporealPoll, 5000);
     }
 
     // -----------------------------------------------------------------

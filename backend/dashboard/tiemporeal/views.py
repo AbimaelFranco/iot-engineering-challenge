@@ -2,7 +2,9 @@ import statistics
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 
+from django.http import JsonResponse
 from django.shortcuts import render
+from django.views.decorators.http import require_GET
 
 from .models import NodeReading
 
@@ -175,3 +177,57 @@ def tiemporeal(request):
         },
     }
     return render(request, "tiemporeal.html", context)
+
+
+def _parse_since(raw):
+    # "since" es un epoch-ms ya ajustado por _to_epoch_ms (lo manda el
+    # cliente de vuelta tal cual se lo dimos). Se convierte a la hora naive
+    # equivalente para poder comparar contra reading_time; es el inverso
+    # exacto de _to_epoch_ms.
+    try:
+        since_ms = int(raw)
+    except (TypeError, ValueError):
+        since_ms = 0
+    if since_ms <= 0:
+        return datetime.min
+    return datetime.fromtimestamp(since_ms / 1000, tz=timezone.utc).replace(tzinfo=None)
+
+
+@require_GET
+def tiemporeal_latest(request):
+    """Lecturas nuevas desde la ultima vez que el cliente pregunto.
+
+    Endpoint de polling para el stream en vivo de Datos en Tiempo Real: el
+    navegador llama esto cada pocos segundos en vez de abrir una conexion
+    MQTT propia, asi ninguna credencial de broker llega al cliente.
+    """
+    since = _parse_since(request.GET.get("since"))
+    # Nunca se consulta mas atras del inicio del dia de hoy, incluso si
+    # "since" viene vacio o corrupto: evita un escaneo sin limite de la tabla.
+    today_start = datetime.combine(date.today(), datetime.min.time())
+    effective_since = max(since, today_start)
+
+    readings = list(
+        NodeReading.objects.filter(
+            reading_time__gt=effective_since,
+            node_id__in=NODE_IDS,
+        )
+        .order_by("reading_time")
+        .values("node_id", "temperature", "humidity", "reading_time")
+    )
+    for r in readings:
+        r["temperature"] = float(r["temperature"])
+        r["humidity"] = float(r["humidity"])
+
+    by_node = {node_id: [r for r in readings if r["node_id"] == node_id] for node_id in NODE_IDS}
+
+    all_times = [r["reading_time"] for r in readings]
+    last_epoch_ms = _to_epoch_ms(max(all_times)) if all_times else None
+
+    return JsonResponse({
+        "tempSeriesA": [[_to_epoch_ms(r["reading_time"]), r["temperature"]] for r in by_node["nodo-a"]],
+        "tempSeriesB": [[_to_epoch_ms(r["reading_time"]), r["temperature"]] for r in by_node["nodo-b"]],
+        "humSeriesA": [[_to_epoch_ms(r["reading_time"]), r["humidity"]] for r in by_node["nodo-a"]],
+        "humSeriesB": [[_to_epoch_ms(r["reading_time"]), r["humidity"]] for r in by_node["nodo-b"]],
+        "lastEpochMs": last_epoch_ms,
+    })

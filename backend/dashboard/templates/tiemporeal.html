@@ -10,6 +10,10 @@
         <p class="page-subtitle">Streaming de lecturas de nodos.</p>
       </div>
       <div class="d-flex gap-2 flex-wrap">
+        <button class="btn-quick-action" type="button" id="tiemporeal-refresh-btn">
+          <i class="bi bi-arrow-clockwise"></i>
+          <span>Actualizar</span>
+        </button>
         <div class="btn-date-picker" id="tiemporeal-live-clock">
           <i class="bi bi-clock"></i>
           <span id="tiemporeal-live-clock-text">--</span>
@@ -163,6 +167,24 @@
               <div class="transaction-list">
                 <div class="transaction-item">
                   <div class="transaction-icon bg-forest-light text-lime">
+                    <i class="bi bi-wifi"></i>
+                  </div>
+                  <div class="transaction-info">
+                    <div class="transaction-name">Estatus</div>
+                  </div>
+                  <div class="d-flex flex-column gap-1 align-items-end">
+                    <div class="chart-legend-item">
+                      <span class="status-dot-online"></span>
+                      <span id="tiemporeal-stat-temp-estatus-a">Nodo A online</span>
+                    </div>
+                    <div class="chart-legend-item">
+                      <span class="status-dot-online"></span>
+                      <span id="tiemporeal-stat-temp-estatus-b">Nodo B online</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="transaction-item">
+                  <div class="transaction-icon bg-forest-light text-lime">
                     <i class="bi bi-bullseye"></i>
                   </div>
                   <div class="transaction-info">
@@ -233,24 +255,6 @@
                     </div>
                   </div>
                 </div>
-                <div class="transaction-item">
-                  <div class="transaction-icon bg-forest-light text-lime">
-                    <i class="bi bi-collection"></i>
-                  </div>
-                  <div class="transaction-info">
-                    <div class="transaction-name">Muestras</div>
-                  </div>
-                  <div class="d-flex flex-column gap-1 align-items-end">
-                    <div class="chart-legend-item">
-                      <span class="legend-dot bg-forest-medium"></span>
-                      <span id="tiemporeal-stat-temp-muestras-a">--</span>
-                    </div>
-                    <div class="chart-legend-item">
-                      <span class="legend-dot bg-brand-orange"></span>
-                      <span id="tiemporeal-stat-temp-muestras-b">--</span>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
@@ -290,6 +294,24 @@
                 <h2 class="card-title">Humedad</h2>
               </div>
               <div class="transaction-list">
+                <div class="transaction-item">
+                  <div class="transaction-icon bg-forest-light text-lime">
+                    <i class="bi bi-wifi"></i>
+                  </div>
+                  <div class="transaction-info">
+                    <div class="transaction-name">Estatus</div>
+                  </div>
+                  <div class="d-flex flex-column gap-1 align-items-end">
+                    <div class="chart-legend-item">
+                      <span class="status-dot-online"></span>
+                      <span id="tiemporeal-stat-hum-estatus-a">Nodo A online</span>
+                    </div>
+                    <div class="chart-legend-item">
+                      <span class="status-dot-online"></span>
+                      <span id="tiemporeal-stat-hum-estatus-b">Nodo B online</span>
+                    </div>
+                  </div>
+                </div>
                 <div class="transaction-item">
                   <div class="transaction-icon bg-forest-light text-lime">
                     <i class="bi bi-bullseye"></i>
@@ -359,24 +381,6 @@
                     <div class="chart-legend-item">
                       <span class="legend-dot bg-brand-orange"></span>
                       <span id="tiemporeal-stat-hum-mediana-b">--</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="transaction-item">
-                  <div class="transaction-icon bg-forest-light text-lime">
-                    <i class="bi bi-collection"></i>
-                  </div>
-                  <div class="transaction-info">
-                    <div class="transaction-name">Muestras</div>
-                  </div>
-                  <div class="d-flex flex-column gap-1 align-items-end">
-                    <div class="chart-legend-item">
-                      <span class="legend-dot bg-forest-medium"></span>
-                      <span id="tiemporeal-stat-hum-muestras-a">--</span>
-                    </div>
-                    <div class="chart-legend-item">
-                      <span class="legend-dot bg-brand-orange"></span>
-                      <span id="tiemporeal-stat-hum-muestras-b">--</span>
                     </div>
                   </div>
                 </div>

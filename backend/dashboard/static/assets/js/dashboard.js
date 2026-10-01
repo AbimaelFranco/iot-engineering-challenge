@@ -971,7 +971,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // -----------------------------------------------------------------
-    // 2g. Tiempo Real Page: Live Summary Stats (Promedio/Maximo/Minimo/Mediana/Muestras)
+    // 2g. Tiempo Real Page: Live Summary Stats (Promedio/Maximo/Minimo/Mediana)
     // -----------------------------------------------------------------
     // Antes estos numeros los calculaba el servidor una sola vez al cargar
     // la pagina (ver historico/views.py _stats/_stat_rows, de donde se
@@ -1044,10 +1044,8 @@ document.addEventListener('DOMContentLoaded', function () {
             tiemporealSetText('tiemporeal-stat-hum-' + stat + '-a', tiemporealFormatValue(humStatsA[stat], '%'));
             tiemporealSetText('tiemporeal-stat-hum-' + stat + '-b', tiemporealFormatValue(humStatsB[stat], '%'));
         });
-        tiemporealSetText('tiemporeal-stat-temp-muestras-a', String(tempStatsA.muestras));
-        tiemporealSetText('tiemporeal-stat-temp-muestras-b', String(tempStatsB.muestras));
-        tiemporealSetText('tiemporeal-stat-hum-muestras-a', String(humStatsA.muestras));
-        tiemporealSetText('tiemporeal-stat-hum-muestras-b', String(humStatsB.muestras));
+        // La fila "Estatus" (antes "Muestras") es texto fijo por ahora (ver
+        // tiemporeal.html) - la logica de online/offline real se agrega despues.
     }
 
     if (tiemporealDataEl) {
@@ -1341,6 +1339,16 @@ document.addEventListener('DOMContentLoaded', function () {
             reloadWithQueryParams({
                 hora_inicio: tiemporealHoraInicioInput.value || '00:00'
             });
+        });
+    }
+
+    // -----------------------------------------------------------------
+    // 5g. Tiempo Real Page: Refresh Button (recarga la pagina)
+    // -----------------------------------------------------------------
+    const tiemporealRefreshBtn = document.querySelector('#tiemporeal-refresh-btn');
+    if (tiemporealRefreshBtn) {
+        tiemporealRefreshBtn.addEventListener('click', function () {
+            window.location.reload();
         });
     }
 

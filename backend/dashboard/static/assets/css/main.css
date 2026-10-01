@@ -821,6 +821,14 @@ body.sidebar-minimized .sidebar-profile {
     background-color: var(--border-light);
 }
 
+/* El reloj en vivo de Tiempo Real cambia de texto cada segundo; sin cifras
+   tabulares, el ancho del digito varia (p.ej. "1" vs "8") y el pill entero
+   se encoge/crece visiblemente con cada tick. */
+#tiemporeal-live-clock-text {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+}
+
 /* ---------------------------------------------------------------------
    8. Cards & Styling Components
 --------------------------------------------------------------------- */

@@ -7,13 +7,27 @@
     <div class="page-header">
       <div>
         <h1 class="page-title">Datos en Tiempo Real</h1>
-        <p class="page-subtitle">Monitorea las lecturas actuales reportadas por los nodos.</p>
+        <p class="page-subtitle">Streaming de lecturas de nodos.</p>
       </div>
-      <button class="btn-date-picker" type="button" id="date-picker-trigger">
-        <i class="bi bi-calendar4-event"></i>
-        <span id="selected-date-range">Enero 12, 2026 - Enero 23, 2026</span>
-        <i class="bi bi-chevron-down ms-1"></i>
-      </button>
+      <div class="d-flex gap-2 flex-wrap">
+        <div class="btn-date-picker" id="tiemporeal-live-clock">
+          <i class="bi bi-clock"></i>
+          <span id="tiemporeal-live-clock-text">--</span>
+        </div>
+        <div class="dropdown">
+          <button class="btn-date-picker" type="button" id="tiemporeal-time-picker-trigger"
+            data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+            <i class="bi bi-clock-history"></i>
+            <span id="tiemporeal-selected-hora">{{ selected_hora_display }}</span>
+            <i class="bi bi-chevron-down ms-1"></i>
+          </button>
+          <div class="dropdown-menu dropdown-menu-end dropdown-menu-custom historico-hora-menu" aria-labelledby="tiemporeal-time-picker-trigger">
+            <label class="form-label-custom" for="tiemporeal-hora-inicio-input">Desde</label>
+            <input type="time" class="form-control-custom form-control-custom-sm mb-3" id="tiemporeal-hora-inicio-input" value="{{ selected_hora_inicio }}">
+            <button type="button" class="btn-custom btn-custom-primary btn-custom-sm w-100" id="tiemporeal-hora-aplicar">Aplicar</button>
+          </div>
+        </div>
+      </div>
     </div>
     <!-- END: Dashboard Header Banner -->
 
@@ -23,30 +37,7 @@
       <!-- TOP AREA: Quick Info Stat Cards Row (Full Width) -->
       <div class="col-12">
         <div class="row g-4">
-          <!-- Stat Card 1: Green Alert Banner -->
-          <div class="col-md-4">
-            <div class="card alert-green-card">
-              <div class="position-relative z-index-2">
-                <span class="alert-green-badge">Update</span>
-                <div class="alert-green-date">Feb 14th 2026</div>
-                <div class="alert-green-text">Sales revenue increased 40% in 1 week</div>
-              </div>
-              <a href="#" class="alert-green-link z-index-2" id="alert-link-statistics">
-                <span>See Statistics</span>
-                <i class="bi bi-arrow-right"></i>
-              </a>
-
-              <!-- Isotipo del proyecto como textura de fondo (en lugar del asterisco de la plantilla) -->
-              <svg class="alert-green-bg-shape" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                <path d="M 64.70,26.14 C 67.98,25.86 70.57,25.98 73.60,26.29 C 76.63,26.60 79.97,27.22 82.90,28.01 C 85.84,28.79 88.72,29.91 91.20,31.01 C 93.69,32.11 95.67,33.23 97.80,34.59 C 99.92,35.95 101.98,37.46 103.97,39.19 C 105.96,40.91 107.92,42.80 109.74,44.96 C 111.56,47.12 113.43,49.70 114.91,52.13 C 116.39,54.57 117.44,56.26 118.63,59.58 C 119.83,62.90 121.43,68.05 122.07,72.04 C 122.71,76.04 122.91,83.24 122.50,83.54 C 122.09,83.84 120.73,76.77 119.63,73.87 C 118.53,70.97 117.46,68.74 115.91,66.13 C 114.35,63.53 112.28,60.59 110.31,58.24 C 108.35,55.90 106.37,53.96 104.11,52.04 C 101.86,50.13 99.45,48.34 96.80,46.73 C 94.14,45.13 91.24,43.61 88.20,42.44 C 85.17,41.27 81.63,40.29 78.60,39.72 C 75.57,39.14 73.07,39.02 70.01,39.00 C 66.96,38.98 63.48,39.07 60.26,39.57 C 57.03,40.07 53.89,40.84 50.67,42.01 C 47.44,43.18 43.72,44.99 40.92,46.59 C 38.12,48.19 36.31,49.51 33.89,51.62 C 31.47,53.72 28.53,56.66 26.40,59.24 C 24.27,61.83 22.65,64.29 21.09,67.13 C 19.54,69.98 18.13,73.19 17.08,76.31 C 16.03,79.43 15.25,85.77 14.80,85.85 C 14.34,85.92 14.03,80.35 14.36,76.76 C 14.69,73.17 15.74,67.96 16.79,64.31 C 17.84,60.66 18.92,58.05 20.66,54.85 C 22.41,51.65 24.77,48.04 27.26,45.10 C 29.75,42.16 32.90,39.34 35.60,37.19 C 38.31,35.03 40.43,33.69 43.49,32.16 C 46.55,30.63 50.42,29.01 53.95,28.01 C 57.49,27.00 61.43,26.43 64.70,26.14 Z" fill="#B4F105"/>
-                <path d="M 80.70,11.29 C 84.07,11.24 90.17,11.24 94.61,11.86 C 99.05,12.48 103.49,13.67 107.33,15.01 C 111.17,16.34 114.26,17.85 117.65,19.88 C 121.05,21.91 124.47,24.33 127.70,27.20 C 130.93,30.07 134.42,33.83 137.03,37.10 C 139.63,40.38 141.45,43.15 143.34,46.85 C 145.22,50.55 147.13,55.18 148.35,59.31 C 149.57,63.44 150.28,67.37 150.64,71.60 C 151.00,75.83 150.98,80.36 150.50,84.68 C 150.02,89.01 149.12,93.35 147.78,97.55 C 146.44,101.74 144.42,106.23 142.48,109.87 C 140.54,113.50 138.67,116.26 136.16,119.34 C 133.64,122.43 130.71,125.60 127.42,128.37 C 124.12,131.14 120.38,133.80 116.37,135.98 C 112.35,138.15 107.50,140.13 103.33,141.42 C 99.17,142.71 94.83,143.28 91.37,143.71 C 87.90,144.14 81.94,144.60 82.53,144.00 C 83.12,143.40 90.94,141.85 94.92,140.13 C 98.90,138.41 102.62,136.40 106.40,133.67 C 110.18,130.94 114.48,127.07 117.58,123.77 C 120.69,120.48 122.99,117.01 125.03,113.90 C 127.06,110.79 128.46,108.05 129.77,105.13 C 131.09,102.22 132.06,99.65 132.92,96.40 C 133.78,93.16 134.57,89.25 134.93,85.67 C 135.29,82.09 135.29,78.40 135.07,74.92 C 134.86,71.43 134.38,68.15 133.64,64.76 C 132.90,61.37 131.80,57.71 130.63,54.58 C 129.46,51.45 128.49,49.14 126.62,45.99 C 124.76,42.84 122.12,38.83 119.44,35.66 C 116.76,32.48 113.74,29.52 110.56,26.92 C 107.38,24.31 104.38,22.12 100.37,20.02 C 96.35,17.92 90.13,15.56 86.48,14.29 C 82.82,13.03 80.47,12.79 78.46,12.43 C 76.44,12.07 74.01,12.33 74.39,12.14 C 74.76,11.95 77.33,11.33 80.70,11.29 Z" fill="#B4F105"/>
-                <path d="M 144.56,21.43 C 145.20,21.30 152.65,26.87 156.13,30.06 C 159.62,33.25 162.65,36.67 165.47,40.55 C 168.29,44.42 171.27,49.88 173.06,53.30 C 174.85,56.71 175.30,58.40 176.21,61.02 C 177.12,63.65 177.83,65.74 178.50,69.03 C 179.17,72.32 179.93,77.07 180.21,80.75 C 180.50,84.43 180.38,88.00 180.21,91.11 C 180.05,94.22 180.00,95.73 179.21,99.40 C 178.43,103.07 177.28,108.48 175.49,113.13 C 173.70,117.79 171.29,122.85 168.47,127.31 C 165.65,131.77 162.10,136.23 158.58,139.92 C 155.07,143.60 151.33,146.65 147.38,149.40 C 143.44,152.15 139.45,154.44 134.92,156.42 C 130.39,158.40 124.66,160.19 120.18,161.29 C 115.70,162.38 111.60,162.71 108.04,163.00 C 104.48,163.29 101.78,163.17 98.82,163.00 C 95.85,162.83 93.10,162.50 90.25,162.00 C 87.39,161.50 84.43,160.81 81.67,159.99 C 78.90,159.18 76.13,158.16 73.65,157.13 C 71.17,156.11 68.93,155.03 66.78,153.84 C 64.62,152.64 62.61,151.21 60.73,149.94 C 58.84,148.68 57.09,147.56 55.46,146.24 C 53.82,144.92 50.66,142.19 50.93,142.03 C 51.20,141.87 54.46,144.14 57.08,145.27 C 59.70,146.41 63.83,147.95 66.67,148.85 C 69.51,149.76 71.49,150.21 74.11,150.71 C 76.74,151.21 79.41,151.64 82.42,151.86 C 85.42,152.07 89.32,152.10 92.16,152.00 C 95.00,151.90 96.71,151.71 99.46,151.28 C 102.20,150.85 105.81,150.14 108.62,149.42 C 111.43,148.71 113.18,148.29 116.33,146.99 C 119.49,145.70 124.05,143.68 127.54,141.67 C 131.03,139.66 134.08,137.59 137.27,134.94 C 140.47,132.29 143.91,128.95 146.73,125.77 C 149.54,122.60 151.92,119.46 154.17,115.90 C 156.42,112.34 158.51,108.53 160.20,104.42 C 161.90,100.31 163.40,95.25 164.35,91.26 C 165.31,87.28 165.69,84.48 165.93,80.51 C 166.17,76.55 166.24,71.93 165.78,67.47 C 165.33,63.01 164.31,57.84 163.21,53.74 C 162.11,49.64 161.02,46.69 159.20,42.87 C 157.39,39.05 154.75,34.39 152.31,30.82 C 149.87,27.24 143.92,21.55 144.56,21.43 Z" fill="#B4F105"/>
-                <path d="M 191.93,99.77 C 192.55,100.01 192.57,110.21 192.07,115.67 C 191.57,121.13 189.90,128.42 188.92,132.55 C 187.95,136.67 187.33,137.67 186.20,140.42 C 185.08,143.16 184.46,145.19 182.19,149.01 C 179.93,152.83 176.18,158.96 172.60,163.33 C 169.01,167.70 163.65,172.52 160.68,175.24 C 157.72,177.97 157.32,178.01 154.81,179.68 C 152.30,181.35 149.78,183.26 145.65,185.27 C 141.53,187.27 135.41,190.06 130.05,191.71 C 124.68,193.35 119.11,194.52 113.46,195.14 C 107.81,195.76 100.62,195.60 96.13,195.43 C 91.64,195.26 89.45,194.67 86.54,194.14 C 83.63,193.62 81.51,193.12 78.67,192.28 C 75.83,191.45 72.42,190.30 69.51,189.13 C 66.60,187.96 64.73,187.29 61.20,185.27 C 57.67,183.24 52.40,180.13 48.33,176.97 C 44.27,173.81 39.68,169.25 36.83,166.33 C 33.98,163.41 32.96,161.79 31.24,159.45 C 29.53,157.11 28.45,155.92 26.52,152.30 C 24.59,148.67 21.22,141.53 19.65,137.69 C 18.07,133.85 17.74,132.02 17.08,129.26 C 16.41,126.51 16.10,124.30 15.64,121.15 C 15.19,118.00 14.48,113.84 14.36,110.37 C 14.24,106.90 14.05,99.12 14.93,100.32 C 15.81,101.52 17.58,112.09 19.65,117.56 C 21.73,123.03 25.23,129.33 27.38,133.15 C 29.53,136.97 30.70,138.13 32.54,140.47 C 34.38,142.81 35.43,144.33 38.42,147.20 C 41.40,150.07 47.08,155.03 50.48,157.68 C 53.87,160.34 56.15,161.57 58.78,163.12 C 61.40,164.67 62.55,165.49 66.22,166.99 C 69.90,168.49 75.56,170.85 80.81,172.14 C 86.06,173.42 91.97,174.38 97.70,174.71 C 103.43,175.05 110.02,174.69 115.17,174.14 C 120.32,173.59 124.02,172.78 128.62,171.42 C 133.22,170.06 138.65,167.92 142.78,165.99 C 146.90,164.06 149.77,162.31 153.38,159.83 C 156.99,157.34 160.88,154.38 164.42,151.08 C 167.95,147.79 171.66,143.77 174.60,140.04 C 177.54,136.32 179.76,133.02 182.05,128.72 C 184.34,124.43 186.71,119.09 188.35,114.26 C 190.00,109.44 191.31,99.54 191.93,99.77 Z" fill="#B4F105"/>
-              </svg>
-            </div>
-          </div>
-
-          <!-- Stat Card 2: Temperatura -->
+          <!-- Stat Card 1: Temperatura -->
           <div class="col-md-4">
             <div class="card card-stat">
               <!-- Subtle background icon: decorative only, must not outrank the text -->
@@ -54,36 +45,20 @@
               <div class="position-relative z-index-2">
                 <div class="card-header">
                   <span class="stat-label">Temperatura</span>
-                  <div class="dropdown">
-                    <button class="card-more-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false"
-                      aria-label="More Options" id="btn-more-income">
-                      <i class="bi bi-three-dots"></i>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end dropdown-menu-custom">
-                      <li><a class="dropdown-item" href="#"><i class="bi bi-arrow-repeat"></i> Refresh</a></li>
-                      <li><a class="dropdown-item" href="#"><i class="bi bi-file-earmark-arrow-down"></i> Export
-                          Report</a></li>
-                      <li>
-                        <hr class="dropdown-divider">
-                      </li>
-                      <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-eye-slash"></i> Hide Details</a>
-                      </li>
-                    </ul>
-                  </div>
                 </div>
                 <div class="d-flex align-items-center justify-content-between">
                   <div>
-                    <div class="stat-value">{{ temp_avg }}°C</div>
+                    <div class="stat-value">{{ temp_avg|default:"--" }}°C</div>
                     <span class="fs-xs">valor promedio</span>
                   </div>
                   <div class="d-flex flex-column gap-2">
                     <div class="chart-legend-item">
                       <span class="legend-dot bg-forest-medium"></span>
-                      <span>Nodo A: {{ temp_avg_a }}°C</span>
+                      <span>Nodo A: {{ temp_avg_a|default:"--" }}°C</span>
                     </div>
                     <div class="chart-legend-item">
-                      <span class="legend-dot bg-lime-accent"></span>
-                      <span>Nodo B: {{ temp_avg_b }}°C</span>
+                      <span class="legend-dot bg-brand-orange"></span>
+                      <span>Nodo B: {{ temp_avg_b|default:"--" }}°C</span>
                     </div>
                   </div>
                 </div>
@@ -91,7 +66,7 @@
             </div>
           </div>
 
-          <!-- Stat Card 3: Humedad -->
+          <!-- Stat Card 2: Humedad -->
           <div class="col-md-4">
             <div class="card card-stat">
               <!-- Subtle background icon: decorative only, must not outrank the text -->
@@ -99,37 +74,51 @@
               <div class="position-relative z-index-2">
                 <div class="card-header">
                   <span class="stat-label">Humedad</span>
-                  <div class="dropdown">
-                    <button class="card-more-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false"
-                      aria-label="More Options" id="btn-more-return">
-                      <i class="bi bi-three-dots"></i>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end dropdown-menu-custom">
-                      <li><a class="dropdown-item" href="#"><i class="bi bi-arrow-repeat"></i> Refresh</a></li>
-                      <li><a class="dropdown-item" href="#"><i class="bi bi-file-earmark-arrow-down"></i> Export
-                          Report</a></li>
-                      <li>
-                        <hr class="dropdown-divider">
-                      </li>
-                      <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-eye-slash"></i> Hide Details</a>
-                      </li>
-                    </ul>
-                  </div>
                 </div>
                 <div class="d-flex align-items-center justify-content-between">
                   <div>
-                    <div class="stat-value">{{ hum_avg }}%</div>
+                    <div class="stat-value">{{ hum_avg|default:"--" }}%</div>
                     <span class="fs-xs">valor promedio</span>
                   </div>
                   <div class="d-flex flex-column gap-2">
                     <div class="chart-legend-item">
                       <span class="legend-dot bg-forest-medium"></span>
-                      <span>Nodo A: {{ hum_avg_a }}%</span>
+                      <span>Nodo A: {{ hum_avg_a|default:"--" }}%</span>
                     </div>
                     <div class="chart-legend-item">
-                      <span class="legend-dot bg-lime-accent"></span>
-                      <span>Nodo B: {{ hum_avg_b }}%</span>
+                      <span class="legend-dot bg-brand-orange"></span>
+                      <span>Nodo B: {{ hum_avg_b|default:"--" }}%</span>
                     </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stat Card 3: Parametros de Alerta (two columns: Temperatura | Humedad) -->
+          <div class="col-md-4">
+            <div class="card card-stat">
+              <!-- Subtle background icon: decorative only, must not outrank the text -->
+              <i class="bi bi-sliders stat-icon-bg" aria-hidden="true"></i>
+              <div class="position-relative z-index-2">
+                <div class="card-header">
+                  <span class="stat-label">Parametros de Alerta</span>
+                </div>
+                <div class="historico-alert-columns">
+                  <div class="historico-alert-col">
+                    <div class="historico-alert-col-label">
+                      <i class="bi bi-thermometer-half"></i>
+                      <span>Temperatura</span>
+                    </div>
+                    <div class="historico-alert-col-value">{{ temp_min }}°C - {{ temp_max }}°C</div>
+                  </div>
+                  <div class="vr"></div>
+                  <div class="historico-alert-col">
+                    <div class="historico-alert-col-label">
+                      <i class="bi bi-droplet-half"></i>
+                      <span>Humedad</span>
+                    </div>
+                    <div class="historico-alert-col-value">{{ hum_min }}% - {{ hum_max }}%</div>
                   </div>
                 </div>
               </div>
@@ -139,14 +128,11 @@
       </div>
       <!-- END: TOP AREA -->
 
-      <!-- LEFT AREA: Primary Dashboard Stats & Tables -->
-      <div class="col-xl-9 col-lg-8">
-
-        <!-- START: Details Area (Transactions + Performance Charts) -->
+      <!-- Temperatura: Chart + Stats pair (equal height row) -->
+      <div class="col-12">
         <div class="row g-4">
-          <!-- Column: Revenue Chart (Full Width / Wider) -->
-          <div class="col-12">
-            <div class="card mb-0">
+          <div class="col-xl-9 col-lg-8">
+            <div class="card mb-0 h-100 historico-chart-card">
               <div class="card-header mb-2">
                 <h2 class="card-title">Temperatura</h2>
                 <!-- Custom Static Legends -->
@@ -156,18 +142,56 @@
                     <span class="chart-legend-label">Nodo A</span>
                   </div>
                   <div class="chart-legend-item">
-                    <span class="legend-dot bg-lime-accent"></span>
+                    <span class="legend-dot bg-brand-orange"></span>
                     <span class="chart-legend-label">Nodo B</span>
+                  </div>
+                  <div class="chart-legend-item">
+                    <span class="legend-dot bg-sys-violet"></span>
+                    <span class="chart-legend-label">Promedio</span>
                   </div>
                 </div>
               </div>
-              <div id="tiemporeal-primary-chart"></div>
+              <div id="tiemporeal-primary-chart" class="historico-chart-fill"></div>
             </div>
           </div>
 
-          <!-- Column: Secondary Trend Chart -->
-          <div class="col-12">
-            <div class="card mb-0">
+          <div class="col-xl-3 col-lg-4">
+            <div class="card mb-0 h-100 d-flex flex-column">
+              <div class="card-header mb-1">
+                <h2 class="card-title">Temperatura</h2>
+              </div>
+              <div class="transaction-list">
+                {% for row in temp_stat_rows %}
+                <div class="transaction-item">
+                  <div class="transaction-icon bg-forest-light text-lime">
+                    <i class="bi {{ row.icon }}"></i>
+                  </div>
+                  <div class="transaction-info">
+                    <div class="transaction-name">{{ row.label }}</div>
+                  </div>
+                  <div class="d-flex flex-column gap-1 align-items-end">
+                    <div class="chart-legend-item">
+                      <span class="legend-dot bg-forest-medium"></span>
+                      <span>{{ row.a|default_if_none:"--" }}{% if row.a != None %}{{ row.unit }}{% endif %}</span>
+                    </div>
+                    <div class="chart-legend-item">
+                      <span class="legend-dot bg-brand-orange"></span>
+                      <span>{{ row.b|default_if_none:"--" }}{% if row.b != None %}{{ row.unit }}{% endif %}</span>
+                    </div>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Humedad: Chart + Stats pair (equal height row) -->
+      <div class="col-12">
+        <div class="row g-4">
+          <div class="col-xl-9 col-lg-8">
+            <div class="card mb-0 h-100 historico-chart-card">
               <div class="card-header mb-2">
                 <h2 class="card-title">Humedad</h2>
                 <!-- Custom Static Legends -->
@@ -177,96 +201,57 @@
                     <span class="chart-legend-label">Nodo A</span>
                   </div>
                   <div class="chart-legend-item">
-                    <span class="legend-dot bg-lime-accent"></span>
+                    <span class="legend-dot bg-brand-orange"></span>
                     <span class="chart-legend-label">Nodo B</span>
+                  </div>
+                  <div class="chart-legend-item">
+                    <span class="legend-dot bg-sys-violet"></span>
+                    <span class="chart-legend-label">Promedio</span>
                   </div>
                 </div>
               </div>
-              <div id="tiemporeal-secondary-chart"></div>
-            </div>
-          </div>
-        </div>
-        <!-- END: Details Area -->
-
-      </div>
-
-      <!-- RIGHT AREA: Performance Details Sidebar Panel -->
-      <div class="col-xl-3 col-lg-4">
-        <div class="right-panel-wrapper d-flex flex-column gap-4 h-100">
-
-          <!-- Performance Donut Chart card -->
-          <div class="card flex-grow-1 d-flex flex-column justify-content-between mb-0">
-            <div class="card-header mb-1">
-              <h2 class="card-title">Total View Performance</h2>
-            </div>
-
-            <div id="views-chart"></div>
-
-            <!-- Custom Legends below the chart -->
-            <div class="chart-legends-container">
-              <div class="chart-legend-item">
-                <span class="legend-dot bg-lime-accent"></span>
-                <span class="text-muted-green">View Count</span>
-              </div>
-              <div class="chart-legend-item">
-                <span class="legend-dot bg-forest-medium"></span>
-                <span class="text-muted-green">Percentage</span>
-              </div>
-              <div class="chart-legend-item">
-                <span class="legend-dot bg-brand-orange"></span>
-                <span class="text-muted-green">Sales</span>
-              </div>
+              <div id="tiemporeal-secondary-chart" class="historico-chart-fill"></div>
             </div>
           </div>
 
-          <!-- Alert Thresholds Card -->
-          <div class="promo-banner-card">
-            <!-- Isotipo del proyecto (recoloreado, subtil y cercano al fondo de la tarjeta) -->
-            <svg class="promo-banner-bg-shape" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-              <path d="M 64.70,26.14 C 67.98,25.86 70.57,25.98 73.60,26.29 C 76.63,26.60 79.97,27.22 82.90,28.01 C 85.84,28.79 88.72,29.91 91.20,31.01 C 93.69,32.11 95.67,33.23 97.80,34.59 C 99.92,35.95 101.98,37.46 103.97,39.19 C 105.96,40.91 107.92,42.80 109.74,44.96 C 111.56,47.12 113.43,49.70 114.91,52.13 C 116.39,54.57 117.44,56.26 118.63,59.58 C 119.83,62.90 121.43,68.05 122.07,72.04 C 122.71,76.04 122.91,83.24 122.50,83.54 C 122.09,83.84 120.73,76.77 119.63,73.87 C 118.53,70.97 117.46,68.74 115.91,66.13 C 114.35,63.53 112.28,60.59 110.31,58.24 C 108.35,55.90 106.37,53.96 104.11,52.04 C 101.86,50.13 99.45,48.34 96.80,46.73 C 94.14,45.13 91.24,43.61 88.20,42.44 C 85.17,41.27 81.63,40.29 78.60,39.72 C 75.57,39.14 73.07,39.02 70.01,39.00 C 66.96,38.98 63.48,39.07 60.26,39.57 C 57.03,40.07 53.89,40.84 50.67,42.01 C 47.44,43.18 43.72,44.99 40.92,46.59 C 38.12,48.19 36.31,49.51 33.89,51.62 C 31.47,53.72 28.53,56.66 26.40,59.24 C 24.27,61.83 22.65,64.29 21.09,67.13 C 19.54,69.98 18.13,73.19 17.08,76.31 C 16.03,79.43 15.25,85.77 14.80,85.85 C 14.34,85.92 14.03,80.35 14.36,76.76 C 14.69,73.17 15.74,67.96 16.79,64.31 C 17.84,60.66 18.92,58.05 20.66,54.85 C 22.41,51.65 24.77,48.04 27.26,45.10 C 29.75,42.16 32.90,39.34 35.60,37.19 C 38.31,35.03 40.43,33.69 43.49,32.16 C 46.55,30.63 50.42,29.01 53.95,28.01 C 57.49,27.00 61.43,26.43 64.70,26.14 Z" fill="#CBD2C3"/>
-              <path d="M 80.70,11.29 C 84.07,11.24 90.17,11.24 94.61,11.86 C 99.05,12.48 103.49,13.67 107.33,15.01 C 111.17,16.34 114.26,17.85 117.65,19.88 C 121.05,21.91 124.47,24.33 127.70,27.20 C 130.93,30.07 134.42,33.83 137.03,37.10 C 139.63,40.38 141.45,43.15 143.34,46.85 C 145.22,50.55 147.13,55.18 148.35,59.31 C 149.57,63.44 150.28,67.37 150.64,71.60 C 151.00,75.83 150.98,80.36 150.50,84.68 C 150.02,89.01 149.12,93.35 147.78,97.55 C 146.44,101.74 144.42,106.23 142.48,109.87 C 140.54,113.50 138.67,116.26 136.16,119.34 C 133.64,122.43 130.71,125.60 127.42,128.37 C 124.12,131.14 120.38,133.80 116.37,135.98 C 112.35,138.15 107.50,140.13 103.33,141.42 C 99.17,142.71 94.83,143.28 91.37,143.71 C 87.90,144.14 81.94,144.60 82.53,144.00 C 83.12,143.40 90.94,141.85 94.92,140.13 C 98.90,138.41 102.62,136.40 106.40,133.67 C 110.18,130.94 114.48,127.07 117.58,123.77 C 120.69,120.48 122.99,117.01 125.03,113.90 C 127.06,110.79 128.46,108.05 129.77,105.13 C 131.09,102.22 132.06,99.65 132.92,96.40 C 133.78,93.16 134.57,89.25 134.93,85.67 C 135.29,82.09 135.29,78.40 135.07,74.92 C 134.86,71.43 134.38,68.15 133.64,64.76 C 132.90,61.37 131.80,57.71 130.63,54.58 C 129.46,51.45 128.49,49.14 126.62,45.99 C 124.76,42.84 122.12,38.83 119.44,35.66 C 116.76,32.48 113.74,29.52 110.56,26.92 C 107.38,24.31 104.38,22.12 100.37,20.02 C 96.35,17.92 90.13,15.56 86.48,14.29 C 82.82,13.03 80.47,12.79 78.46,12.43 C 76.44,12.07 74.01,12.33 74.39,12.14 C 74.76,11.95 77.33,11.33 80.70,11.29 Z" fill="#CBD2C3"/>
-              <path d="M 144.56,21.43 C 145.20,21.30 152.65,26.87 156.13,30.06 C 159.62,33.25 162.65,36.67 165.47,40.55 C 168.29,44.42 171.27,49.88 173.06,53.30 C 174.85,56.71 175.30,58.40 176.21,61.02 C 177.12,63.65 177.83,65.74 178.50,69.03 C 179.17,72.32 179.93,77.07 180.21,80.75 C 180.50,84.43 180.38,88.00 180.21,91.11 C 180.05,94.22 180.00,95.73 179.21,99.40 C 178.43,103.07 177.28,108.48 175.49,113.13 C 173.70,117.79 171.29,122.85 168.47,127.31 C 165.65,131.77 162.10,136.23 158.58,139.92 C 155.07,143.60 151.33,146.65 147.38,149.40 C 143.44,152.15 139.45,154.44 134.92,156.42 C 130.39,158.40 124.66,160.19 120.18,161.29 C 115.70,162.38 111.60,162.71 108.04,163.00 C 104.48,163.29 101.78,163.17 98.82,163.00 C 95.85,162.83 93.10,162.50 90.25,162.00 C 87.39,161.50 84.43,160.81 81.67,159.99 C 78.90,159.18 76.13,158.16 73.65,157.13 C 71.17,156.11 68.93,155.03 66.78,153.84 C 64.62,152.64 62.61,151.21 60.73,149.94 C 58.84,148.68 57.09,147.56 55.46,146.24 C 53.82,144.92 50.66,142.19 50.93,142.03 C 51.20,141.87 54.46,144.14 57.08,145.27 C 59.70,146.41 63.83,147.95 66.67,148.85 C 69.51,149.76 71.49,150.21 74.11,150.71 C 76.74,151.21 79.41,151.64 82.42,151.86 C 85.42,152.07 89.32,152.10 92.16,152.00 C 95.00,151.90 96.71,151.71 99.46,151.28 C 102.20,150.85 105.81,150.14 108.62,149.42 C 111.43,148.71 113.18,148.29 116.33,146.99 C 119.49,145.70 124.05,143.68 127.54,141.67 C 131.03,139.66 134.08,137.59 137.27,134.94 C 140.47,132.29 143.91,128.95 146.73,125.77 C 149.54,122.60 151.92,119.46 154.17,115.90 C 156.42,112.34 158.51,108.53 160.20,104.42 C 161.90,100.31 163.40,95.25 164.35,91.26 C 165.31,87.28 165.69,84.48 165.93,80.51 C 166.17,76.55 166.24,71.93 165.78,67.47 C 165.33,63.01 164.31,57.84 163.21,53.74 C 162.11,49.64 161.02,46.69 159.20,42.87 C 157.39,39.05 154.75,34.39 152.31,30.82 C 149.87,27.24 143.92,21.55 144.56,21.43 Z" fill="#CBD2C3"/>
-              <path d="M 191.93,99.77 C 192.55,100.01 192.57,110.21 192.07,115.67 C 191.57,121.13 189.90,128.42 188.92,132.55 C 187.95,136.67 187.33,137.67 186.20,140.42 C 185.08,143.16 184.46,145.19 182.19,149.01 C 179.93,152.83 176.18,158.96 172.60,163.33 C 169.01,167.70 163.65,172.52 160.68,175.24 C 157.72,177.97 157.32,178.01 154.81,179.68 C 152.30,181.35 149.78,183.26 145.65,185.27 C 141.53,187.27 135.41,190.06 130.05,191.71 C 124.68,193.35 119.11,194.52 113.46,195.14 C 107.81,195.76 100.62,195.60 96.13,195.43 C 91.64,195.26 89.45,194.67 86.54,194.14 C 83.63,193.62 81.51,193.12 78.67,192.28 C 75.83,191.45 72.42,190.30 69.51,189.13 C 66.60,187.96 64.73,187.29 61.20,185.27 C 57.67,183.24 52.40,180.13 48.33,176.97 C 44.27,173.81 39.68,169.25 36.83,166.33 C 33.98,163.41 32.96,161.79 31.24,159.45 C 29.53,157.11 28.45,155.92 26.52,152.30 C 24.59,148.67 21.22,141.53 19.65,137.69 C 18.07,133.85 17.74,132.02 17.08,129.26 C 16.41,126.51 16.10,124.30 15.64,121.15 C 15.19,118.00 14.48,113.84 14.36,110.37 C 14.24,106.90 14.05,99.12 14.93,100.32 C 15.81,101.52 17.58,112.09 19.65,117.56 C 21.73,123.03 25.23,129.33 27.38,133.15 C 29.53,136.97 30.70,138.13 32.54,140.47 C 34.38,142.81 35.43,144.33 38.42,147.20 C 41.40,150.07 47.08,155.03 50.48,157.68 C 53.87,160.34 56.15,161.57 58.78,163.12 C 61.40,164.67 62.55,165.49 66.22,166.99 C 69.90,168.49 75.56,170.85 80.81,172.14 C 86.06,173.42 91.97,174.38 97.70,174.71 C 103.43,175.05 110.02,174.69 115.17,174.14 C 120.32,173.59 124.02,172.78 128.62,171.42 C 133.22,170.06 138.65,167.92 142.78,165.99 C 146.90,164.06 149.77,162.31 153.38,159.83 C 156.99,157.34 160.88,154.38 164.42,151.08 C 167.95,147.79 171.66,143.77 174.60,140.04 C 177.54,136.32 179.76,133.02 182.05,128.72 C 184.34,124.43 186.71,119.09 188.35,114.26 C 190.00,109.44 191.31,99.54 191.93,99.77 Z" fill="#CBD2C3"/>
-            </svg>
-
-            <h3 class="promo-title">Parametros de Alerta</h3>
-
-            <div class="position-relative z-index-2">
-              <div class="progress-container">
-                <div class="progress-label-row">
-                  <span class="progress-label">Temperatura minima</span>
-                  <span class="progress-value">{{ temp_min }}°C</span>
-                </div>
+          <div class="col-xl-3 col-lg-4">
+            <div class="card mb-0 h-100 d-flex flex-column">
+              <div class="card-header mb-1">
+                <h2 class="card-title">Humedad</h2>
               </div>
-              <div class="progress-container">
-                <div class="progress-label-row">
-                  <span class="progress-label">Temperatura maxima</span>
-                  <span class="progress-value">{{ temp_max }}°C</span>
+              <div class="transaction-list">
+                {% for row in hum_stat_rows %}
+                <div class="transaction-item">
+                  <div class="transaction-icon bg-forest-light text-lime">
+                    <i class="bi {{ row.icon }}"></i>
+                  </div>
+                  <div class="transaction-info">
+                    <div class="transaction-name">{{ row.label }}</div>
+                  </div>
+                  <div class="d-flex flex-column gap-1 align-items-end">
+                    <div class="chart-legend-item">
+                      <span class="legend-dot bg-forest-medium"></span>
+                      <span>{{ row.a|default_if_none:"--" }}{% if row.a != None %}{{ row.unit }}{% endif %}</span>
+                    </div>
+                    <div class="chart-legend-item">
+                      <span class="legend-dot bg-brand-orange"></span>
+                      <span>{{ row.b|default_if_none:"--" }}{% if row.b != None %}{{ row.unit }}{% endif %}</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div class="progress-container">
-                <div class="progress-label-row">
-                  <span class="progress-label">Humedad minima</span>
-                  <span class="progress-value">{{ hum_min }}%</span>
-                </div>
-              </div>
-              <div class="progress-container mb-0">
-                <div class="progress-label-row">
-                  <span class="progress-label">Humedad maxima</span>
-                  <span class="progress-value">{{ hum_max }}%</span>
-                </div>
+                {% endfor %}
               </div>
             </div>
           </div>
         </div>
       </div>
-      <!-- END: RIGHT AREA -->
 
     </div>
     <!-- END: Main Layout Grid -->
 {% endblock %}
 
 {% block extra_js %}
+{{ tiemporeal_chart_data|json_script:"tiemporeal-chart-data" }}
 <script>
   window.TIEMPOREAL_THRESHOLDS = {
     tempMin: {{ temp_min }},

@@ -507,26 +507,33 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // -----------------------------------------------------------------
-    // 2d. Tiempo Real Page: Primary Trend Chart (Line Chart with Markers)
+    // 2d. Tiempo Real Page: Primary Trend Chart (real node_readings data)
     // -----------------------------------------------------------------
     const tiemporealPrimaryEl = document.querySelector('#tiemporeal-primary-chart');
     if (tiemporealPrimaryEl) {
         const temp = window.TIEMPOREAL_THRESHOLDS || { tempMin: 18, tempMax: 30 };
+        const tiemporealDataEl = document.querySelector('#tiemporeal-chart-data');
+        const chartData = tiemporealDataEl ? JSON.parse(tiemporealDataEl.textContent) : {};
 
         const tiemporealPrimaryOptions = {
             series: [
                 {
                     name: 'Nodo A',
-                    data: [19.5, 22.0, 25.5, 31.0, 28.0, 24.0, 20.0, 17.5]
+                    data: chartData.tempSeriesA || []
                 },
                 {
                     name: 'Nodo B',
-                    data: [21.0, 23.5, 26.0, 29.5, 27.0, 22.5, 18.5, 16.0]
+                    data: chartData.tempSeriesB || []
+                },
+                {
+                    name: 'Promedio',
+                    data: chartData.tempSeriesAvg || []
                 }
             ],
             chart: {
                 type: 'line',
-                height: 420,
+                height: '100%',
+                parentHeightOffset: 0,
                 animations: {
                     enabled: false
                 },
@@ -538,7 +545,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 },
                 fontFamily: 'Plus Jakarta Sans, sans-serif'
             },
-            colors: ['#072F1F', '#B4F105'],
+            colors: ['#072F1F', '#F97316', '#7C3AED'],
             states: {
                 hover: {
                     filter: {
@@ -547,7 +554,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             },
             markers: {
-                size: 4,
+                size: [4, 4, 0],
                 strokeWidth: 2,
                 strokeColors: '#FFFFFF',
                 hover: {
@@ -559,7 +566,8 @@ document.addEventListener('DOMContentLoaded', function () {
             },
             stroke: {
                 curve: 'smooth',
-                width: 3
+                width: [3, 3, 2],
+                dashArray: [0, 0, 6]
             },
             legend: {
                 show: false // Custom legends are drawn statically in HTML to match reference layout
@@ -585,8 +593,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             },
             xaxis: {
-                categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
+                type: 'datetime',
+                // El servidor ya recorta min/max a los datos reales del dia
+                // seleccionado (no fuerza un rango fijo de 24h).
+                min: chartData.xMin != null ? chartData.xMin : undefined,
+                max: chartData.xMax != null ? chartData.xMax : undefined,
                 labels: {
+                    datetimeUTC: true, // ver comentario de _to_epoch_ms en tiemporeal/views.py
                     style: {
                         colors: '#6C7E75',
                         fontSize: '11px',
@@ -608,10 +621,16 @@ document.addEventListener('DOMContentLoaded', function () {
             fill: {
                 opacity: 1
             },
+            noData: {
+                text: 'Sin lecturas para este dia'
+            },
             tooltip: {
+                x: {
+                    format: 'HH:mm:ss'
+                },
                 y: {
                     formatter: function (val) {
-                        return val + " °C";
+                        return val.toFixed(2) + " °C";
                     }
                 },
                 theme: 'dark'
@@ -671,26 +690,33 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // -----------------------------------------------------------------
-    // 2e. Tiempo Real Page: Secondary Trend Chart (Line Chart with Markers)
+    // 2e. Tiempo Real Page: Secondary Trend Chart (real node_readings data)
     // -----------------------------------------------------------------
     const tiemporealSecondaryEl = document.querySelector('#tiemporeal-secondary-chart');
     if (tiemporealSecondaryEl) {
         const hum = window.TIEMPOREAL_THRESHOLDS || { humMin: 30, humMax: 70 };
+        const tiemporealDataEl = document.querySelector('#tiemporeal-chart-data');
+        const chartData = tiemporealDataEl ? JSON.parse(tiemporealDataEl.textContent) : {};
 
         const tiemporealSecondaryOptions = {
             series: [
                 {
                     name: 'Nodo A',
-                    data: [45, 52, 60, 75, 68, 55, 40]
+                    data: chartData.humSeriesA || []
                 },
                 {
                     name: 'Nodo B',
-                    data: [50, 58, 65, 72, 62, 48, 35]
+                    data: chartData.humSeriesB || []
+                },
+                {
+                    name: 'Promedio',
+                    data: chartData.humSeriesAvg || []
                 }
             ],
             chart: {
                 type: 'line',
-                height: 420,
+                height: '100%',
+                parentHeightOffset: 0,
                 animations: {
                     enabled: false
                 },
@@ -702,7 +728,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 },
                 fontFamily: 'Plus Jakarta Sans, sans-serif'
             },
-            colors: ['#072F1F', '#B4F105'],
+            colors: ['#072F1F', '#F97316', '#7C3AED'],
             states: {
                 hover: {
                     filter: {
@@ -711,7 +737,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             },
             markers: {
-                size: 4,
+                size: [4, 4, 0],
                 strokeWidth: 2,
                 strokeColors: '#FFFFFF',
                 hover: {
@@ -723,7 +749,8 @@ document.addEventListener('DOMContentLoaded', function () {
             },
             stroke: {
                 curve: 'smooth',
-                width: 3
+                width: [3, 3, 2],
+                dashArray: [0, 0, 6]
             },
             legend: {
                 show: false // Custom legends are drawn statically in HTML to match reference layout
@@ -743,8 +770,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             },
             xaxis: {
-                categories: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
+                type: 'datetime',
+                min: chartData.xMin != null ? chartData.xMin : undefined,
+                max: chartData.xMax != null ? chartData.xMax : undefined,
                 labels: {
+                    datetimeUTC: true, // ver comentario de _to_epoch_ms en tiemporeal/views.py
                     style: {
                         colors: '#6C7E75',
                         fontSize: '11px',
@@ -763,10 +793,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     show: false
                 }
             },
+            noData: {
+                text: 'Sin lecturas para este dia'
+            },
             tooltip: {
+                x: {
+                    format: 'HH:mm:ss'
+                },
                 y: {
                     formatter: function (val) {
-                        return val + " %";
+                        return val.toFixed(2) + " %";
                     }
                 },
                 theme: 'dark'
@@ -1024,11 +1060,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // -----------------------------------------------------------------
-    // 5b. Historico Page: Single-Day Picker (reloads with ?fecha=)
+    // 5b. Shared helper: reload the current page with updated query params
+    // (used by both the Historico and Tiempo Real date/hour pickers)
     // -----------------------------------------------------------------
-    const historicoDatePickerTrigger = document.querySelector('#historico-date-picker-trigger');
-
-    function historicoNavigate(updates) {
+    function reloadWithQueryParams(updates) {
         const params = new URLSearchParams(window.location.search);
         Object.keys(updates).forEach(function (key) {
             if (updates[key]) {
@@ -1040,6 +1075,11 @@ document.addEventListener('DOMContentLoaded', function () {
         window.location.href = '?' + params.toString();
     }
 
+    // -----------------------------------------------------------------
+    // 5c. Historico Page: Single-Day Picker (reloads with ?fecha=)
+    // -----------------------------------------------------------------
+    const historicoDatePickerTrigger = document.querySelector('#historico-date-picker-trigger');
+
     if (historicoDatePickerTrigger) {
         flatpickr(historicoDatePickerTrigger, {
             mode: 'single',
@@ -1048,14 +1088,14 @@ document.addEventListener('DOMContentLoaded', function () {
             defaultDate: window.HISTORICO_SELECTED_DATE || undefined,
             onChange: function (selectedDates, dateStr) {
                 if (dateStr) {
-                    historicoNavigate({ fecha: dateStr });
+                    reloadWithQueryParams({ fecha: dateStr });
                 }
             }
         });
     }
 
     // -----------------------------------------------------------------
-    // 5c. Historico Page: Hour-Range Dropdown (reloads with ?hora_inicio=&hora_fin=)
+    // 5d. Historico Page: Hour-Range Dropdown (reloads with ?hora_inicio=&hora_fin=)
     // -----------------------------------------------------------------
     const historicoHoraInicioInput = document.querySelector('#historico-hora-inicio-input');
     const historicoHoraFinInput = document.querySelector('#historico-hora-fin-input');
@@ -1063,9 +1103,50 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (historicoHoraAplicarBtn && historicoHoraInicioInput && historicoHoraFinInput) {
         historicoHoraAplicarBtn.addEventListener('click', function () {
-            historicoNavigate({
+            reloadWithQueryParams({
                 hora_inicio: historicoHoraInicioInput.value || '00:00',
                 hora_fin: historicoHoraFinInput.value || '23:59'
+            });
+        });
+    }
+
+    // -----------------------------------------------------------------
+    // 5e. Tiempo Real Page: Live Clock (hora local del navegador, actualiza cada segundo)
+    // -----------------------------------------------------------------
+    const tiemporealLiveClockText = document.querySelector('#tiemporeal-live-clock-text');
+
+    if (tiemporealLiveClockText) {
+        const MESES_ES = [
+            'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+            'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+        ];
+        const pad2 = function (n) {
+            return String(n).padStart(2, '0');
+        };
+
+        function updateTiemporealLiveClock() {
+            const now = new Date();
+            const fecha = now.getDate() + ' de ' + MESES_ES[now.getMonth()] + ' de ' + now.getFullYear();
+            const hora = pad2(now.getHours()) + ':' + pad2(now.getMinutes()) + ':' + pad2(now.getSeconds());
+            tiemporealLiveClockText.textContent = fecha + ' - ' + hora;
+        }
+
+        updateTiemporealLiveClock();
+        setInterval(updateTiemporealLiveClock, 1000);
+    }
+
+    // -----------------------------------------------------------------
+    // 5f. Tiempo Real Page: Start-Hour Dropdown (reloads with ?hora_inicio=)
+    // Vista de stream: solo la hora inicial es seleccionable, hora_fin
+    // siempre es "ahora" y la calcula el servidor.
+    // -----------------------------------------------------------------
+    const tiemporealHoraInicioInput = document.querySelector('#tiemporeal-hora-inicio-input');
+    const tiemporealHoraAplicarBtn = document.querySelector('#tiemporeal-hora-aplicar');
+
+    if (tiemporealHoraAplicarBtn && tiemporealHoraInicioInput) {
+        tiemporealHoraAplicarBtn.addEventListener('click', function () {
+            reloadWithQueryParams({
+                hora_inicio: tiemporealHoraInicioInput.value || '00:00'
             });
         });
     }

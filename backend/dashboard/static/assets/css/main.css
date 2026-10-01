@@ -1571,6 +1571,16 @@ span.flatpickr-weekday {
     opacity: 1 !important;
 }
 
+.historico-hora-menu {
+    min-width: 220px !important;
+    padding: 16px !important;
+}
+
+.historico-hora-menu .form-label-custom {
+    font-size: 0.75rem;
+    margin-bottom: 0.35rem;
+}
+
 /* Custom ApexCharts Hover Overrides for Lime-Yellow Color (#B4F105) */
 .apexcharts-bar-area[fill="#B4F105"]:hover,
 .apexcharts-bar-area[fill="#b4f105"]:hover,

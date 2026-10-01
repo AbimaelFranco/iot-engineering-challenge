@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timedelta, timezone
 
 from django.shortcuts import render
 
@@ -11,6 +11,9 @@ MESES_ES = [
     "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
 ]
 
+HORA_INICIO_DEFAULT = time(0, 0)
+HORA_FIN_DEFAULT = time(23, 59)
+
 
 def _parse_fecha(raw):
     if raw:
@@ -19,6 +22,15 @@ def _parse_fecha(raw):
         except ValueError:
             pass
     return date.today()
+
+
+def _parse_hora(raw, default):
+    if raw:
+        try:
+            return datetime.strptime(raw, "%H:%M").time()
+        except ValueError:
+            pass
+    return default
 
 
 def _to_epoch_ms(naive_dt):
@@ -36,10 +48,20 @@ def _avg(values):
 
 def historico(request):
     selected_date = _parse_fecha(request.GET.get("fecha"))
+    hora_inicio = _parse_hora(request.GET.get("hora_inicio"), HORA_INICIO_DEFAULT)
+    hora_fin = _parse_hora(request.GET.get("hora_fin"), HORA_FIN_DEFAULT)
+    if hora_inicio > hora_fin:
+        hora_inicio, hora_fin = hora_fin, hora_inicio
+
+    # El rango de horas filtra dentro del dia seleccionado; se incluye el
+    # minuto completo de hora_fin (ej. "23:59" cubre hasta 23:59:59.999999).
+    range_start = datetime.combine(selected_date, hora_inicio)
+    range_end = datetime.combine(selected_date, hora_fin) + timedelta(minutes=1, microseconds=-1)
 
     readings = list(
         NodeReading.objects.filter(
-            reading_time__date=selected_date,
+            reading_time__gte=range_start,
+            reading_time__lte=range_end,
             node_id__in=NODE_IDS,
         )
         .order_by("reading_time")
@@ -84,6 +106,9 @@ def historico(request):
     context = {
         "selected_date": selected_date.strftime("%Y-%m-%d"),
         "selected_date_display": f"{selected_date.day} de {MESES_ES[selected_date.month - 1]} de {selected_date.year}",
+        "selected_hora_inicio": hora_inicio.strftime("%H:%M"),
+        "selected_hora_fin": hora_fin.strftime("%H:%M"),
+        "selected_hora_display": f"{hora_inicio.strftime('%H:%M')} - {hora_fin.strftime('%H:%M')}",
         "temp_min": 18,
         "temp_max": 30,
         "temp_avg": _avg(temps_a + temps_b),

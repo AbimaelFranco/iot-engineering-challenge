@@ -1016,6 +1016,18 @@ document.addEventListener('DOMContentLoaded', function () {
     // -----------------------------------------------------------------
     const historicoDatePickerTrigger = document.querySelector('#historico-date-picker-trigger');
 
+    function historicoNavigate(updates) {
+        const params = new URLSearchParams(window.location.search);
+        Object.keys(updates).forEach(function (key) {
+            if (updates[key]) {
+                params.set(key, updates[key]);
+            } else {
+                params.delete(key);
+            }
+        });
+        window.location.href = '?' + params.toString();
+    }
+
     if (historicoDatePickerTrigger) {
         flatpickr(historicoDatePickerTrigger, {
             mode: 'single',
@@ -1024,9 +1036,25 @@ document.addEventListener('DOMContentLoaded', function () {
             defaultDate: window.HISTORICO_SELECTED_DATE || undefined,
             onChange: function (selectedDates, dateStr) {
                 if (dateStr) {
-                    window.location.href = '?fecha=' + dateStr;
+                    historicoNavigate({ fecha: dateStr });
                 }
             }
+        });
+    }
+
+    // -----------------------------------------------------------------
+    // 5c. Historico Page: Hour-Range Dropdown (reloads with ?hora_inicio=&hora_fin=)
+    // -----------------------------------------------------------------
+    const historicoHoraInicioInput = document.querySelector('#historico-hora-inicio-input');
+    const historicoHoraFinInput = document.querySelector('#historico-hora-fin-input');
+    const historicoHoraAplicarBtn = document.querySelector('#historico-hora-aplicar');
+
+    if (historicoHoraAplicarBtn && historicoHoraInicioInput && historicoHoraFinInput) {
+        historicoHoraAplicarBtn.addEventListener('click', function () {
+            historicoNavigate({
+                hora_inicio: historicoHoraInicioInput.value || '00:00',
+                hora_fin: historicoHoraFinInput.value || '23:59'
+            });
         });
     }
 

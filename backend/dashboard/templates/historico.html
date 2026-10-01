@@ -9,11 +9,28 @@
         <h1 class="page-title">Datos Historicos</h1>
         <p class="page-subtitle">Consulta el historial de lecturas registradas por los nodos.</p>
       </div>
-      <button class="btn-date-picker" type="button" id="historico-date-picker-trigger">
-        <i class="bi bi-calendar4-event"></i>
-        <span id="historico-selected-date">{{ selected_date_display }}</span>
-        <i class="bi bi-chevron-down ms-1"></i>
-      </button>
+      <div class="d-flex gap-2 flex-wrap">
+        <button class="btn-date-picker" type="button" id="historico-date-picker-trigger">
+          <i class="bi bi-calendar4-event"></i>
+          <span id="historico-selected-date">{{ selected_date_display }}</span>
+          <i class="bi bi-chevron-down ms-1"></i>
+        </button>
+        <div class="dropdown">
+          <button class="btn-date-picker" type="button" id="historico-time-picker-trigger"
+            data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+            <i class="bi bi-clock-history"></i>
+            <span id="historico-selected-hora">{{ selected_hora_display }}</span>
+            <i class="bi bi-chevron-down ms-1"></i>
+          </button>
+          <div class="dropdown-menu dropdown-menu-end dropdown-menu-custom historico-hora-menu" aria-labelledby="historico-time-picker-trigger">
+            <label class="form-label-custom" for="historico-hora-inicio-input">Desde</label>
+            <input type="time" class="form-control-custom form-control-custom-sm mb-3" id="historico-hora-inicio-input" value="{{ selected_hora_inicio }}">
+            <label class="form-label-custom" for="historico-hora-fin-input">Hasta</label>
+            <input type="time" class="form-control-custom form-control-custom-sm mb-3" id="historico-hora-fin-input" value="{{ selected_hora_fin }}">
+            <button type="button" class="btn-custom btn-custom-primary btn-custom-sm w-100" id="historico-hora-aplicar">Aplicar</button>
+          </div>
+        </div>
+      </div>
     </div>
     <!-- END: Dashboard Header Banner -->
 
@@ -276,5 +293,7 @@
     humMax: {{ hum_max }}
   };
   window.HISTORICO_SELECTED_DATE = "{{ selected_date }}";
+  window.HISTORICO_SELECTED_HORA_INICIO = "{{ selected_hora_inicio }}";
+  window.HISTORICO_SELECTED_HORA_FIN = "{{ selected_hora_fin }}";
 </script>
 {% endblock %}

@@ -173,7 +173,8 @@ document.addEventListener('DOMContentLoaded', function () {
             ],
             chart: {
                 type: 'line',
-                height: 420,
+                height: '100%',
+                parentHeightOffset: 0,
                 animations: {
                     enabled: false
                 },
@@ -350,7 +351,8 @@ document.addEventListener('DOMContentLoaded', function () {
             ],
             chart: {
                 type: 'line',
-                height: 420,
+                height: '100%',
+                parentHeightOffset: 0,
                 animations: {
                     enabled: false
                 },

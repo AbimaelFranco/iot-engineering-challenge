@@ -1,4 +1,5 @@
 import statistics
+from collections import defaultdict
 from datetime import date, datetime, time, timedelta, timezone
 
 from django.shortcuts import render
@@ -41,6 +42,27 @@ def _to_epoch_ms(naive_dt):
     # que ApexCharts, configurado con datetimeUTC=true, muestre exactamente
     # la misma hora de pared que quedo guardada, sin un doble corrimiento.
     return int(naive_dt.replace(tzinfo=timezone.utc).timestamp() * 1000)
+
+
+def _series_promedio(readings, field):
+    # Nodo A y Nodo B publican cada uno por su cuenta (mismo periodo de
+    # ~60s, ver READ_PERIOD_MS en firmware/ESP32/main/ESP32.c) pero sin
+    # relojes sincronizados entre si, asi que sus timestamps no coinciden
+    # exactamente. Se agrupan por minuto para poder promediar ambos nodos
+    # en cada punto; los minutos en los que solo reporto un nodo se omiten
+    # (no hay nada que promediar).
+    buckets = defaultdict(dict)
+    for r in readings:
+        key = r["reading_time"].replace(second=0, microsecond=0)
+        buckets[key][r["node_id"]] = r[field]
+
+    series = []
+    for key in sorted(buckets):
+        values = buckets[key]
+        if len(values) < len(NODE_IDS):
+            continue
+        series.append([_to_epoch_ms(key), round(sum(values.values()) / len(values), 1)])
+    return series
 
 
 def _stats(values):
@@ -99,6 +121,8 @@ def historico(request):
     temp_series_b = [[_to_epoch_ms(r["reading_time"]), r["temperature"]] for r in by_node["nodo-b"]]
     hum_series_a = [[_to_epoch_ms(r["reading_time"]), r["humidity"]] for r in by_node["nodo-a"]]
     hum_series_b = [[_to_epoch_ms(r["reading_time"]), r["humidity"]] for r in by_node["nodo-b"]]
+    temp_series_avg = _series_promedio(readings, "temperature")
+    hum_series_avg = _series_promedio(readings, "humidity")
 
     all_times = [r["reading_time"] for r in readings]
     if all_times:
@@ -136,7 +160,7 @@ def historico(request):
         "temp_avg_a": temp_stats_a["promedio"],
         "temp_avg_b": temp_stats_b["promedio"],
         "hum_min": 30,
-        "hum_max": 70,
+        "hum_max": 80,
         "hum_avg": hum_stats_all["promedio"],
         "hum_avg_a": hum_stats_a["promedio"],
         "hum_avg_b": hum_stats_b["promedio"],
@@ -145,8 +169,10 @@ def historico(request):
         "historico_chart_data": {
             "tempSeriesA": temp_series_a,
             "tempSeriesB": temp_series_b,
+            "tempSeriesAvg": temp_series_avg,
             "humSeriesA": hum_series_a,
             "humSeriesB": hum_series_b,
+            "humSeriesAvg": hum_series_avg,
             "xMin": x_min,
             "xMax": x_max,
         },

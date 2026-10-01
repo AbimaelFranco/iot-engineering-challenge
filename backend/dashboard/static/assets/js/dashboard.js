@@ -169,6 +169,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 {
                     name: 'Nodo B',
                     data: chartData.tempSeriesB || []
+                },
+                {
+                    name: 'Promedio',
+                    data: chartData.tempSeriesAvg || []
                 }
             ],
             chart: {
@@ -186,7 +190,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 },
                 fontFamily: 'Plus Jakarta Sans, sans-serif'
             },
-            colors: ['#072F1F', '#F97316'],
+            colors: ['#072F1F', '#F97316', '#7C3AED'],
             states: {
                 hover: {
                     filter: {
@@ -195,7 +199,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             },
             markers: {
-                size: 4,
+                size: [4, 4, 0],
                 strokeWidth: 2,
                 strokeColors: '#FFFFFF',
                 hover: {
@@ -207,7 +211,8 @@ document.addEventListener('DOMContentLoaded', function () {
             },
             stroke: {
                 curve: 'smooth',
-                width: 3
+                width: [3, 3, 2],
+                dashArray: [0, 0, 6]
             },
             legend: {
                 show: false // Custom legends are drawn statically in HTML to match reference layout
@@ -347,6 +352,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 {
                     name: 'Nodo B',
                     data: chartData.humSeriesB || []
+                },
+                {
+                    name: 'Promedio',
+                    data: chartData.humSeriesAvg || []
                 }
             ],
             chart: {
@@ -364,7 +373,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 },
                 fontFamily: 'Plus Jakarta Sans, sans-serif'
             },
-            colors: ['#072F1F', '#F97316'],
+            colors: ['#072F1F', '#F97316', '#7C3AED'],
             states: {
                 hover: {
                     filter: {
@@ -373,7 +382,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             },
             markers: {
-                size: 4,
+                size: [4, 4, 0],
                 strokeWidth: 2,
                 strokeColors: '#FFFFFF',
                 hover: {
@@ -385,7 +394,8 @@ document.addEventListener('DOMContentLoaded', function () {
             },
             stroke: {
                 curve: 'smooth',
-                width: 3
+                width: [3, 3, 2],
+                dashArray: [0, 0, 6]
             },
             legend: {
                 show: false // Custom legends are drawn statically in HTML to match reference layout

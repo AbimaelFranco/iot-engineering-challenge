@@ -77,7 +77,9 @@
     --sys-red-bg: #FEE2E2;
     --sys-orange: #F97316;
     --sys-orange-bg: #FFEDD5;
-    
+    --sys-violet: #7C3AED;
+    --sys-violet-bg: #EDE9FE;
+
     /* Layout Configurations */
     --sidebar-width: 280px;
     --navbar-height: 80px;
@@ -1188,6 +1190,10 @@ body.sidebar-minimized .sidebar-profile {
 
 .bg-lime-accent {
     background-color: var(--brand-lime);
+}
+
+.bg-sys-violet {
+    background-color: var(--sys-violet);
 }
 
 .bg-brand-orange {

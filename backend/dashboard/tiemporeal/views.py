@@ -1,4 +1,3 @@
-import statistics
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 
@@ -59,28 +58,6 @@ def _series_promedio(readings, field):
     return series
 
 
-def _stats(values):
-    if not values:
-        return {"promedio": None, "maximo": None, "minimo": None, "mediana": None, "muestras": 0}
-    return {
-        "promedio": round(sum(values) / len(values), 1),
-        "maximo": round(max(values), 1),
-        "minimo": round(min(values), 1),
-        "mediana": round(statistics.median(values), 1),
-        "muestras": len(values),
-    }
-
-
-def _stat_rows(stats_a, stats_b, unit):
-    return [
-        {"label": "Promedio", "icon": "bi-bullseye", "a": stats_a["promedio"], "b": stats_b["promedio"], "unit": unit},
-        {"label": "Maximo", "icon": "bi-arrow-up-circle", "a": stats_a["maximo"], "b": stats_b["maximo"], "unit": unit},
-        {"label": "Minimo", "icon": "bi-arrow-down-circle", "a": stats_a["minimo"], "b": stats_b["minimo"], "unit": unit},
-        {"label": "Mediana", "icon": "bi-distribute-vertical", "a": stats_a["mediana"], "b": stats_b["mediana"], "unit": unit},
-        {"label": "Muestras", "icon": "bi-collection", "a": stats_a["muestras"], "b": stats_b["muestras"], "unit": ""},
-    ]
-
-
 def tiemporeal(request):
     selected_date = _parse_fecha(request.GET.get("fecha"))
 
@@ -138,33 +115,13 @@ def tiemporeal(request):
     else:
         x_min = x_max = None
 
-    temps_a = [r["temperature"] for r in by_node["nodo-a"]]
-    temps_b = [r["temperature"] for r in by_node["nodo-b"]]
-    hums_a = [r["humidity"] for r in by_node["nodo-a"]]
-    hums_b = [r["humidity"] for r in by_node["nodo-b"]]
-
-    temp_stats_all = _stats(temps_a + temps_b)
-    temp_stats_a = _stats(temps_a)
-    temp_stats_b = _stats(temps_b)
-    hum_stats_all = _stats(hums_a + hums_b)
-    hum_stats_a = _stats(hums_a)
-    hum_stats_b = _stats(hums_b)
-
     context = {
         "selected_hora_inicio": hora_inicio.strftime("%H:%M"),
         "selected_hora_display": f"{hora_inicio.strftime('%H:%M')} - Ahora",
         "temp_min": 18,
         "temp_max": 30,
-        "temp_avg": temp_stats_all["promedio"],
-        "temp_avg_a": temp_stats_a["promedio"],
-        "temp_avg_b": temp_stats_b["promedio"],
         "hum_min": 30,
         "hum_max": 80,
-        "hum_avg": hum_stats_all["promedio"],
-        "hum_avg_a": hum_stats_a["promedio"],
-        "hum_avg_b": hum_stats_b["promedio"],
-        "temp_stat_rows": _stat_rows(temp_stats_a, temp_stats_b, "°C"),
-        "hum_stat_rows": _stat_rows(hum_stats_a, hum_stats_b, "%"),
         "tiemporeal_chart_data": {
             "tempSeriesA": temp_series_a,
             "tempSeriesB": temp_series_b,

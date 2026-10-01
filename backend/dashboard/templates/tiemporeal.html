@@ -48,17 +48,17 @@
                 </div>
                 <div class="d-flex align-items-center justify-content-between">
                   <div>
-                    <div class="stat-value">{{ temp_avg|default:"--" }}°C</div>
+                    <div class="stat-value" id="tiemporeal-temp-avg">--°C</div>
                     <span class="fs-xs">valor promedio</span>
                   </div>
                   <div class="d-flex flex-column gap-2">
                     <div class="chart-legend-item">
                       <span class="legend-dot bg-forest-medium"></span>
-                      <span>Nodo A: {{ temp_avg_a|default:"--" }}°C</span>
+                      <span id="tiemporeal-temp-avg-a">Nodo A: --°C</span>
                     </div>
                     <div class="chart-legend-item">
                       <span class="legend-dot bg-brand-orange"></span>
-                      <span>Nodo B: {{ temp_avg_b|default:"--" }}°C</span>
+                      <span id="tiemporeal-temp-avg-b">Nodo B: --°C</span>
                     </div>
                   </div>
                 </div>
@@ -77,17 +77,17 @@
                 </div>
                 <div class="d-flex align-items-center justify-content-between">
                   <div>
-                    <div class="stat-value">{{ hum_avg|default:"--" }}%</div>
+                    <div class="stat-value" id="tiemporeal-hum-avg">--%</div>
                     <span class="fs-xs">valor promedio</span>
                   </div>
                   <div class="d-flex flex-column gap-2">
                     <div class="chart-legend-item">
                       <span class="legend-dot bg-forest-medium"></span>
-                      <span>Nodo A: {{ hum_avg_a|default:"--" }}%</span>
+                      <span id="tiemporeal-hum-avg-a">Nodo A: --%</span>
                     </div>
                     <div class="chart-legend-item">
                       <span class="legend-dot bg-brand-orange"></span>
-                      <span>Nodo B: {{ hum_avg_b|default:"--" }}%</span>
+                      <span id="tiemporeal-hum-avg-b">Nodo B: --%</span>
                     </div>
                   </div>
                 </div>
@@ -161,26 +161,96 @@
                 <h2 class="card-title">Temperatura</h2>
               </div>
               <div class="transaction-list">
-                {% for row in temp_stat_rows %}
                 <div class="transaction-item">
                   <div class="transaction-icon bg-forest-light text-lime">
-                    <i class="bi {{ row.icon }}"></i>
+                    <i class="bi bi-bullseye"></i>
                   </div>
                   <div class="transaction-info">
-                    <div class="transaction-name">{{ row.label }}</div>
+                    <div class="transaction-name">Promedio</div>
                   </div>
                   <div class="d-flex flex-column gap-1 align-items-end">
                     <div class="chart-legend-item">
                       <span class="legend-dot bg-forest-medium"></span>
-                      <span>{{ row.a|default_if_none:"--" }}{% if row.a != None %}{{ row.unit }}{% endif %}</span>
+                      <span id="tiemporeal-stat-temp-promedio-a">--</span>
                     </div>
                     <div class="chart-legend-item">
                       <span class="legend-dot bg-brand-orange"></span>
-                      <span>{{ row.b|default_if_none:"--" }}{% if row.b != None %}{{ row.unit }}{% endif %}</span>
+                      <span id="tiemporeal-stat-temp-promedio-b">--</span>
                     </div>
                   </div>
                 </div>
-                {% endfor %}
+                <div class="transaction-item">
+                  <div class="transaction-icon bg-forest-light text-lime">
+                    <i class="bi bi-arrow-up-circle"></i>
+                  </div>
+                  <div class="transaction-info">
+                    <div class="transaction-name">Maximo</div>
+                  </div>
+                  <div class="d-flex flex-column gap-1 align-items-end">
+                    <div class="chart-legend-item">
+                      <span class="legend-dot bg-forest-medium"></span>
+                      <span id="tiemporeal-stat-temp-maximo-a">--</span>
+                    </div>
+                    <div class="chart-legend-item">
+                      <span class="legend-dot bg-brand-orange"></span>
+                      <span id="tiemporeal-stat-temp-maximo-b">--</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="transaction-item">
+                  <div class="transaction-icon bg-forest-light text-lime">
+                    <i class="bi bi-arrow-down-circle"></i>
+                  </div>
+                  <div class="transaction-info">
+                    <div class="transaction-name">Minimo</div>
+                  </div>
+                  <div class="d-flex flex-column gap-1 align-items-end">
+                    <div class="chart-legend-item">
+                      <span class="legend-dot bg-forest-medium"></span>
+                      <span id="tiemporeal-stat-temp-minimo-a">--</span>
+                    </div>
+                    <div class="chart-legend-item">
+                      <span class="legend-dot bg-brand-orange"></span>
+                      <span id="tiemporeal-stat-temp-minimo-b">--</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="transaction-item">
+                  <div class="transaction-icon bg-forest-light text-lime">
+                    <i class="bi bi-distribute-vertical"></i>
+                  </div>
+                  <div class="transaction-info">
+                    <div class="transaction-name">Mediana</div>
+                  </div>
+                  <div class="d-flex flex-column gap-1 align-items-end">
+                    <div class="chart-legend-item">
+                      <span class="legend-dot bg-forest-medium"></span>
+                      <span id="tiemporeal-stat-temp-mediana-a">--</span>
+                    </div>
+                    <div class="chart-legend-item">
+                      <span class="legend-dot bg-brand-orange"></span>
+                      <span id="tiemporeal-stat-temp-mediana-b">--</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="transaction-item">
+                  <div class="transaction-icon bg-forest-light text-lime">
+                    <i class="bi bi-collection"></i>
+                  </div>
+                  <div class="transaction-info">
+                    <div class="transaction-name">Muestras</div>
+                  </div>
+                  <div class="d-flex flex-column gap-1 align-items-end">
+                    <div class="chart-legend-item">
+                      <span class="legend-dot bg-forest-medium"></span>
+                      <span id="tiemporeal-stat-temp-muestras-a">--</span>
+                    </div>
+                    <div class="chart-legend-item">
+                      <span class="legend-dot bg-brand-orange"></span>
+                      <span id="tiemporeal-stat-temp-muestras-b">--</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -220,26 +290,96 @@
                 <h2 class="card-title">Humedad</h2>
               </div>
               <div class="transaction-list">
-                {% for row in hum_stat_rows %}
                 <div class="transaction-item">
                   <div class="transaction-icon bg-forest-light text-lime">
-                    <i class="bi {{ row.icon }}"></i>
+                    <i class="bi bi-bullseye"></i>
                   </div>
                   <div class="transaction-info">
-                    <div class="transaction-name">{{ row.label }}</div>
+                    <div class="transaction-name">Promedio</div>
                   </div>
                   <div class="d-flex flex-column gap-1 align-items-end">
                     <div class="chart-legend-item">
                       <span class="legend-dot bg-forest-medium"></span>
-                      <span>{{ row.a|default_if_none:"--" }}{% if row.a != None %}{{ row.unit }}{% endif %}</span>
+                      <span id="tiemporeal-stat-hum-promedio-a">--</span>
                     </div>
                     <div class="chart-legend-item">
                       <span class="legend-dot bg-brand-orange"></span>
-                      <span>{{ row.b|default_if_none:"--" }}{% if row.b != None %}{{ row.unit }}{% endif %}</span>
+                      <span id="tiemporeal-stat-hum-promedio-b">--</span>
                     </div>
                   </div>
                 </div>
-                {% endfor %}
+                <div class="transaction-item">
+                  <div class="transaction-icon bg-forest-light text-lime">
+                    <i class="bi bi-arrow-up-circle"></i>
+                  </div>
+                  <div class="transaction-info">
+                    <div class="transaction-name">Maximo</div>
+                  </div>
+                  <div class="d-flex flex-column gap-1 align-items-end">
+                    <div class="chart-legend-item">
+                      <span class="legend-dot bg-forest-medium"></span>
+                      <span id="tiemporeal-stat-hum-maximo-a">--</span>
+                    </div>
+                    <div class="chart-legend-item">
+                      <span class="legend-dot bg-brand-orange"></span>
+                      <span id="tiemporeal-stat-hum-maximo-b">--</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="transaction-item">
+                  <div class="transaction-icon bg-forest-light text-lime">
+                    <i class="bi bi-arrow-down-circle"></i>
+                  </div>
+                  <div class="transaction-info">
+                    <div class="transaction-name">Minimo</div>
+                  </div>
+                  <div class="d-flex flex-column gap-1 align-items-end">
+                    <div class="chart-legend-item">
+                      <span class="legend-dot bg-forest-medium"></span>
+                      <span id="tiemporeal-stat-hum-minimo-a">--</span>
+                    </div>
+                    <div class="chart-legend-item">
+                      <span class="legend-dot bg-brand-orange"></span>
+                      <span id="tiemporeal-stat-hum-minimo-b">--</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="transaction-item">
+                  <div class="transaction-icon bg-forest-light text-lime">
+                    <i class="bi bi-distribute-vertical"></i>
+                  </div>
+                  <div class="transaction-info">
+                    <div class="transaction-name">Mediana</div>
+                  </div>
+                  <div class="d-flex flex-column gap-1 align-items-end">
+                    <div class="chart-legend-item">
+                      <span class="legend-dot bg-forest-medium"></span>
+                      <span id="tiemporeal-stat-hum-mediana-a">--</span>
+                    </div>
+                    <div class="chart-legend-item">
+                      <span class="legend-dot bg-brand-orange"></span>
+                      <span id="tiemporeal-stat-hum-mediana-b">--</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="transaction-item">
+                  <div class="transaction-icon bg-forest-light text-lime">
+                    <i class="bi bi-collection"></i>
+                  </div>
+                  <div class="transaction-info">
+                    <div class="transaction-name">Muestras</div>
+                  </div>
+                  <div class="d-flex flex-column gap-1 align-items-end">
+                    <div class="chart-legend-item">
+                      <span class="legend-dot bg-forest-medium"></span>
+                      <span id="tiemporeal-stat-hum-muestras-a">--</span>
+                    </div>
+                    <div class="chart-legend-item">
+                      <span class="legend-dot bg-brand-orange"></span>
+                      <span id="tiemporeal-stat-hum-muestras-b">--</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

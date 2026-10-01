@@ -909,6 +909,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
         function tiemporealProcessPoint(nodeId, epochMs, temp, hum) {
             const seriesIndex = nodeId === 'nodo-a' ? 0 : 1;
+            const tempKey = nodeId === 'nodo-a' ? 'tempSeriesA' : 'tempSeriesB';
+            const humKey = nodeId === 'nodo-a' ? 'humSeriesA' : 'humSeriesB';
+            tiemporealChartData[tempKey].push([epochMs, temp]);
+            tiemporealChartData[humKey].push([epochMs, hum]);
 
             tiemporealExtendAxis(epochMs);
             tiemporealAppendPoint(tiemporealPrimaryChart, seriesIndex, epochMs, temp);
@@ -940,6 +944,7 @@ document.addEventListener('DOMContentLoaded', function () {
             fetch(tiemporealLatestUrl + '?since=' + tiemporealSince)
                 .then(function (res) { return res.json(); })
                 .then(function (data) {
+                    const hasNewPoints = (data.tempSeriesA && data.tempSeriesA.length) || (data.tempSeriesB && data.tempSeriesB.length);
                     (data.tempSeriesA || []).forEach(function (point, i) {
                         tiemporealProcessPoint('nodo-a', point[0], point[1], data.humSeriesA[i][1]);
                     });
@@ -948,6 +953,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     });
                     if (data.lastEpochMs != null) {
                         tiemporealSince = data.lastEpochMs;
+                    }
+                    if (hasNewPoints) {
+                        tiemporealUpdateStatsDisplay();
                     }
                 })
                 .catch(function (err) {
@@ -960,6 +968,90 @@ document.addEventListener('DOMContentLoaded', function () {
 
         tiemporealPoll();
         setInterval(tiemporealPoll, 5000);
+    }
+
+    // -----------------------------------------------------------------
+    // 2g. Tiempo Real Page: Live Summary Stats (Promedio/Maximo/Minimo/Mediana/Muestras)
+    // -----------------------------------------------------------------
+    // Antes estos numeros los calculaba el servidor una sola vez al cargar
+    // la pagina (ver historico/views.py _stats/_stat_rows, de donde se
+    // copio esta misma logica). En Tiempo Real eso los dejaba desactualizados
+    // apenas entraba una lectura nueva por polling, asi que el calculo se
+    // mueve aqui: se recalcula sobre tiemporealChartData completo cada vez
+    // que llegan puntos nuevos.
+    function tiemporealSetText(id, text) {
+        const el = document.getElementById(id);
+        if (el) {
+            el.textContent = text;
+        }
+    }
+
+    function tiemporealRound1(n) {
+        return Math.round(n * 10) / 10;
+    }
+
+    function tiemporealMedian(values) {
+        const sorted = values.slice().sort(function (a, b) { return a - b; });
+        const mid = Math.floor(sorted.length / 2);
+        if (sorted.length % 2 === 0) {
+            return (sorted[mid - 1] + sorted[mid]) / 2;
+        }
+        return sorted[mid];
+    }
+
+    function tiemporealComputeStats(values) {
+        if (!values.length) {
+            return { promedio: null, maximo: null, minimo: null, mediana: null, muestras: 0 };
+        }
+        const sum = values.reduce(function (acc, v) { return acc + v; }, 0);
+        return {
+            promedio: tiemporealRound1(sum / values.length),
+            maximo: tiemporealRound1(Math.max.apply(null, values)),
+            minimo: tiemporealRound1(Math.min.apply(null, values)),
+            mediana: tiemporealRound1(tiemporealMedian(values)),
+            muestras: values.length
+        };
+    }
+
+    function tiemporealFormatValue(value, unit) {
+        return value == null ? '--' : (value + unit);
+    }
+
+    function tiemporealUpdateStatsDisplay() {
+        const tempsA = tiemporealChartData.tempSeriesA.map(function (p) { return p[1]; });
+        const tempsB = tiemporealChartData.tempSeriesB.map(function (p) { return p[1]; });
+        const humsA = tiemporealChartData.humSeriesA.map(function (p) { return p[1]; });
+        const humsB = tiemporealChartData.humSeriesB.map(function (p) { return p[1]; });
+
+        const tempStatsAll = tiemporealComputeStats(tempsA.concat(tempsB));
+        const tempStatsA = tiemporealComputeStats(tempsA);
+        const tempStatsB = tiemporealComputeStats(tempsB);
+        const humStatsAll = tiemporealComputeStats(humsA.concat(humsB));
+        const humStatsA = tiemporealComputeStats(humsA);
+        const humStatsB = tiemporealComputeStats(humsB);
+
+        tiemporealSetText('tiemporeal-temp-avg', tiemporealFormatValue(tempStatsAll.promedio, '°C'));
+        tiemporealSetText('tiemporeal-temp-avg-a', 'Nodo A: ' + tiemporealFormatValue(tempStatsA.promedio, '°C'));
+        tiemporealSetText('tiemporeal-temp-avg-b', 'Nodo B: ' + tiemporealFormatValue(tempStatsB.promedio, '°C'));
+
+        tiemporealSetText('tiemporeal-hum-avg', tiemporealFormatValue(humStatsAll.promedio, '%'));
+        tiemporealSetText('tiemporeal-hum-avg-a', 'Nodo A: ' + tiemporealFormatValue(humStatsA.promedio, '%'));
+        tiemporealSetText('tiemporeal-hum-avg-b', 'Nodo B: ' + tiemporealFormatValue(humStatsB.promedio, '%'));
+
+        ['promedio', 'maximo', 'minimo', 'mediana'].forEach(function (stat) {
+            tiemporealSetText('tiemporeal-stat-temp-' + stat + '-a', tiemporealFormatValue(tempStatsA[stat], '°C'));
+            tiemporealSetText('tiemporeal-stat-temp-' + stat + '-b', tiemporealFormatValue(tempStatsB[stat], '°C'));
+            tiemporealSetText('tiemporeal-stat-hum-' + stat + '-a', tiemporealFormatValue(humStatsA[stat], '%'));
+            tiemporealSetText('tiemporeal-stat-hum-' + stat + '-b', tiemporealFormatValue(humStatsB[stat], '%'));
+        });
+        tiemporealSetText('tiemporeal-stat-temp-muestras-a', String(tempStatsA.muestras));
+        tiemporealSetText('tiemporeal-stat-temp-muestras-b', String(tempStatsB.muestras));
+        tiemporealSetText('tiemporeal-stat-hum-muestras-a', String(humStatsA.muestras));
+        tiemporealSetText('tiemporeal-stat-hum-muestras-b', String(humStatsB.muestras));
+    }
+
+    if (tiemporealDataEl) {
+        tiemporealUpdateStatsDisplay();
     }
 
     // -----------------------------------------------------------------

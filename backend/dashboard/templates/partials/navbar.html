@@ -1,0 +1,91 @@
+{% load static %}
+<!-- START: Top Navbar Component -->
+<header class="navbar-custom">
+  <div class="navbar-left">
+    <!-- Desktop sidebar toggle (visible on large screens only) -->
+    <button class="btn-desktop-toggle d-none d-xl-flex align-items-center justify-content-center me-3"
+      id="desktop-sidebar-toggle" aria-label="Minimize Sidebar">
+      <i class="bi bi-chevron-bar-left"></i>
+    </button>
+    <!-- Mobile sidebar toggle -->
+    <button class="sidebar-toggle-btn me-2" id="sidebar-toggle" aria-label="Toggle Navigation">
+      <i class="bi bi-list"></i>
+    </button>
+
+    <!-- Quick Actions Dropdown -->
+    <div class="dropdown ms-2">
+      <button class="btn-quick-action dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false"
+        id="quick-actions-dropdown">
+        <i class="bi bi-plus-lg"></i>
+        <span>Crear</span>
+      </button>
+      <ul class="dropdown-menu dropdown-menu-quick-action" aria-labelledby="quick-actions-dropdown">
+        <li class="dropdown-header">Exportar</li>
+        <li><a class="dropdown-item" href="#"><i class="bi bi-file-earmark-text"></i> Reporte</a></li>
+        <li><a class="dropdown-item" href="#"><i class="bi bi-file-earmark-spreadsheet"></i> Excel</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Right actions -->
+  <div class="navbar-actions">
+    <!-- Notifications Dropdown -->
+    <div class="dropdown">
+      <button class="navbar-action-btn dropdown-toggle" type="button" data-bs-toggle="dropdown"
+        aria-expanded="false" id="btn-notifications" data-bs-auto-close="outside">
+        <i class="bi bi-bell"></i>
+        <span class="navbar-action-badge"></span>
+      </button>
+      <div class="dropdown-menu dropdown-menu-end dropdown-menu-notification p-0"
+        aria-labelledby="btn-notifications">
+        <div class="notification-header">
+          <h6 class="notification-title">Notificaciones</h6>
+        </div>
+        <div class="notification-list">
+          <!-- Nodo conectado -->
+          <a href="#" class="notification-item">
+            <div class="notification-icon bg-success text-white">
+              <i class="bi bi-wifi"></i>
+            </div>
+            <div class="notification-content">
+              <p class="notification-text">Nodo conectado</p>
+              <span class="notification-time">Hace 2 min</span>
+            </div>
+          </a>
+          <!-- Nodo desconectado -->
+          <a href="#" class="notification-item">
+            <div class="notification-icon bg-danger text-white">
+              <i class="bi bi-wifi-off"></i>
+            </div>
+            <div class="notification-content">
+              <p class="notification-text">Nodo desconectado</p>
+              <span class="notification-time">Hace 1 hora</span>
+            </div>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Profile Dropdown -->
+    <div class="dropdown ms-2">
+      <button class="navbar-profile-btn dropdown-toggle" type="button" data-bs-toggle="dropdown"
+        aria-expanded="false" id="profile-dropdown">
+        <img src="{% static 'assets/images/avatar.png' %}" alt="Profile Image" class="navbar-profile-img">
+        <span class="navbar-profile-name d-none d-md-inline">Administrator</span>
+        <i class="bi bi-chevron-down navbar-profile-caret"></i>
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end dropdown-menu-profile" aria-labelledby="profile-dropdown">
+        <li class="dropdown-header">Welcome !</li>
+        <li><a class="dropdown-item" href="#"><i class="bi bi-person"></i> My Account</a></li>
+        <li><a class="dropdown-item" href="#"><i class="bi bi-gear"></i> Settings</a></li>
+        <li><a class="dropdown-item" href="#"><i class="bi bi-lock"></i> Lock Screen</a></li>
+        <li>
+          <hr class="dropdown-divider">
+        </li>
+        <li><a class="dropdown-item text-danger" href="page-login.html"><i class="bi bi-box-arrow-right"></i>
+            Logout</a></li>
+      </ul>
+    </div>
+  </div>
+</header>
+<!-- END: Top Navbar Component -->

@@ -233,3 +233,7 @@ firmware/ESP32/main/secrets.h
 # Script local para despertar manualmente el servicio de Render - de uso
 # personal, no forma parte del despliegue ni se comparte en el repo
 backend/wake_render.py
+
+# Plantilla HTML/CSS de terceros usada como base para los templates de
+# Django - no es codigo propio, no se versiona
+backend/dashboard/plantilla/

@@ -1,0 +1,269 @@
+{% extends 'base.html' %}
+
+{% block title %}Datos Historicos - IoT Admin{% endblock %}
+
+{% block content %}
+    <!-- START: Dashboard Header Banner -->
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Datos Historicos</h1>
+        <p class="page-subtitle">Historial de lecturas registradas por los nodos.</p>
+      </div>
+      <div class="d-flex gap-2 flex-wrap">
+        <button class="btn-date-picker" type="button" id="historico-date-picker-trigger">
+          <i class="bi bi-calendar4-event"></i>
+          <span id="historico-selected-date">{{ selected_date_display }}</span>
+          <i class="bi bi-chevron-down ms-1"></i>
+        </button>
+        <div class="dropdown">
+          <button class="btn-date-picker" type="button" id="historico-time-picker-trigger"
+            data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+            <i class="bi bi-clock-history"></i>
+            <span id="historico-selected-hora">{{ selected_hora_display }}</span>
+            <i class="bi bi-chevron-down ms-1"></i>
+          </button>
+          <div class="dropdown-menu dropdown-menu-end dropdown-menu-custom historico-hora-menu" aria-labelledby="historico-time-picker-trigger">
+            <label class="form-label-custom" for="historico-hora-inicio-input">Desde</label>
+            <input type="time" class="form-control-custom form-control-custom-sm mb-3" id="historico-hora-inicio-input" value="{{ selected_hora_inicio }}">
+            <label class="form-label-custom" for="historico-hora-fin-input">Hasta</label>
+            <input type="time" class="form-control-custom form-control-custom-sm mb-3" id="historico-hora-fin-input" value="{{ selected_hora_fin }}">
+            <button type="button" class="btn-custom btn-custom-primary btn-custom-sm w-100" id="historico-hora-aplicar">Aplicar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- END: Dashboard Header Banner -->
+
+    <!-- START: Main Layout Grid (2 Columns: Dashboard + Performance Pane) -->
+    <div class="row g-4">
+
+      <!-- TOP AREA: Quick Info Stat Cards Row (Full Width) -->
+      <div class="col-12">
+        <div class="row g-4">
+          <!-- Stat Card 1: Temperatura -->
+          <div class="col-md-4">
+            <div class="card card-stat">
+              <!-- Subtle background icon: decorative only, must not outrank the text -->
+              <i class="bi bi-thermometer-half stat-icon-bg" aria-hidden="true"></i>
+              <div class="position-relative z-index-2">
+                <div class="card-header">
+                  <span class="stat-label">Temperatura</span>
+                </div>
+                <div class="d-flex align-items-center justify-content-between">
+                  <div>
+                    <div class="stat-value">{{ temp_avg|default:"--" }}°C</div>
+                    <span class="fs-xs">valor promedio</span>
+                  </div>
+                  <div class="d-flex flex-column gap-2">
+                    <div class="chart-legend-item">
+                      <span class="legend-dot bg-forest-medium"></span>
+                      <span>Nodo A: {{ temp_avg_a|default:"--" }}°C</span>
+                    </div>
+                    <div class="chart-legend-item">
+                      <span class="legend-dot bg-brand-orange"></span>
+                      <span>Nodo B: {{ temp_avg_b|default:"--" }}°C</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stat Card 2: Humedad -->
+          <div class="col-md-4">
+            <div class="card card-stat">
+              <!-- Subtle background icon: decorative only, must not outrank the text -->
+              <i class="bi bi-droplet-half stat-icon-bg" aria-hidden="true"></i>
+              <div class="position-relative z-index-2">
+                <div class="card-header">
+                  <span class="stat-label">Humedad</span>
+                </div>
+                <div class="d-flex align-items-center justify-content-between">
+                  <div>
+                    <div class="stat-value">{{ hum_avg|default:"--" }}%</div>
+                    <span class="fs-xs">valor promedio</span>
+                  </div>
+                  <div class="d-flex flex-column gap-2">
+                    <div class="chart-legend-item">
+                      <span class="legend-dot bg-forest-medium"></span>
+                      <span>Nodo A: {{ hum_avg_a|default:"--" }}%</span>
+                    </div>
+                    <div class="chart-legend-item">
+                      <span class="legend-dot bg-brand-orange"></span>
+                      <span>Nodo B: {{ hum_avg_b|default:"--" }}%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stat Card 3: Parametros de Alerta (two columns: Temperatura | Humedad) -->
+          <div class="col-md-4">
+            <div class="card card-stat">
+              <!-- Subtle background icon: decorative only, must not outrank the text -->
+              <i class="bi bi-sliders stat-icon-bg" aria-hidden="true"></i>
+              <div class="position-relative z-index-2">
+                <div class="card-header">
+                  <span class="stat-label">Parametros de Alerta</span>
+                </div>
+                <div class="historico-alert-columns">
+                  <div class="historico-alert-col">
+                    <div class="historico-alert-col-label">
+                      <i class="bi bi-thermometer-half"></i>
+                      <span>Temperatura</span>
+                    </div>
+                    <div class="historico-alert-col-value">{{ temp_min }}°C - {{ temp_max }}°C</div>
+                  </div>
+                  <div class="vr"></div>
+                  <div class="historico-alert-col">
+                    <div class="historico-alert-col-label">
+                      <i class="bi bi-droplet-half"></i>
+                      <span>Humedad</span>
+                    </div>
+                    <div class="historico-alert-col-value">{{ hum_min }}% - {{ hum_max }}%</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- END: TOP AREA -->
+
+      <!-- Temperatura: Chart + Stats pair (equal height row) -->
+      <div class="col-12">
+        <div class="row g-4">
+          <div class="col-xl-9 col-lg-8">
+            <div class="card mb-0 h-100 historico-chart-card">
+              <div class="card-header mb-2">
+                <h2 class="card-title">Temperatura</h2>
+                <!-- Custom Static Legends -->
+                <div class="d-flex gap-3 align-items-center">
+                  <div class="chart-legend-item">
+                    <span class="legend-dot bg-forest-medium"></span>
+                    <span class="chart-legend-label">Nodo A</span>
+                  </div>
+                  <div class="chart-legend-item">
+                    <span class="legend-dot bg-brand-orange"></span>
+                    <span class="chart-legend-label">Nodo B</span>
+                  </div>
+                  <div class="chart-legend-item">
+                    <span class="legend-dot bg-sys-violet"></span>
+                    <span class="chart-legend-label">Promedio</span>
+                  </div>
+                </div>
+              </div>
+              <div id="historico-primary-chart" class="historico-chart-fill"></div>
+            </div>
+          </div>
+
+          <div class="col-xl-3 col-lg-4">
+            <div class="card mb-0 h-100 d-flex flex-column">
+              <div class="card-header mb-1">
+                <h2 class="card-title">Temperatura</h2>
+              </div>
+              <div class="transaction-list">
+                {% for row in temp_stat_rows %}
+                <div class="transaction-item">
+                  <div class="transaction-icon bg-forest-light text-lime">
+                    <i class="bi {{ row.icon }}"></i>
+                  </div>
+                  <div class="transaction-info">
+                    <div class="transaction-name">{{ row.label }}</div>
+                  </div>
+                  <div class="d-flex flex-column gap-1 align-items-end">
+                    <div class="chart-legend-item">
+                      <span class="legend-dot bg-forest-medium"></span>
+                      <span>{{ row.a|default_if_none:"--" }}{% if row.a != None %}{{ row.unit }}{% endif %}</span>
+                    </div>
+                    <div class="chart-legend-item">
+                      <span class="legend-dot bg-brand-orange"></span>
+                      <span>{{ row.b|default_if_none:"--" }}{% if row.b != None %}{{ row.unit }}{% endif %}</span>
+                    </div>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Humedad: Chart + Stats pair (equal height row) -->
+      <div class="col-12">
+        <div class="row g-4">
+          <div class="col-xl-9 col-lg-8">
+            <div class="card mb-0 h-100 historico-chart-card">
+              <div class="card-header mb-2">
+                <h2 class="card-title">Humedad</h2>
+                <!-- Custom Static Legends -->
+                <div class="d-flex gap-3 align-items-center">
+                  <div class="chart-legend-item">
+                    <span class="legend-dot bg-forest-medium"></span>
+                    <span class="chart-legend-label">Nodo A</span>
+                  </div>
+                  <div class="chart-legend-item">
+                    <span class="legend-dot bg-brand-orange"></span>
+                    <span class="chart-legend-label">Nodo B</span>
+                  </div>
+                  <div class="chart-legend-item">
+                    <span class="legend-dot bg-sys-violet"></span>
+                    <span class="chart-legend-label">Promedio</span>
+                  </div>
+                </div>
+              </div>
+              <div id="historico-secondary-chart" class="historico-chart-fill"></div>
+            </div>
+          </div>
+
+          <div class="col-xl-3 col-lg-4">
+            <div class="card mb-0 h-100 d-flex flex-column">
+              <div class="card-header mb-1">
+                <h2 class="card-title">Humedad</h2>
+              </div>
+              <div class="transaction-list">
+                {% for row in hum_stat_rows %}
+                <div class="transaction-item">
+                  <div class="transaction-icon bg-forest-light text-lime">
+                    <i class="bi {{ row.icon }}"></i>
+                  </div>
+                  <div class="transaction-info">
+                    <div class="transaction-name">{{ row.label }}</div>
+                  </div>
+                  <div class="d-flex flex-column gap-1 align-items-end">
+                    <div class="chart-legend-item">
+                      <span class="legend-dot bg-forest-medium"></span>
+                      <span>{{ row.a|default_if_none:"--" }}{% if row.a != None %}{{ row.unit }}{% endif %}</span>
+                    </div>
+                    <div class="chart-legend-item">
+                      <span class="legend-dot bg-brand-orange"></span>
+                      <span>{{ row.b|default_if_none:"--" }}{% if row.b != None %}{{ row.unit }}{% endif %}</span>
+                    </div>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <!-- END: Main Layout Grid -->
+{% endblock %}
+
+{% block extra_js %}
+{{ historico_chart_data|json_script:"historico-chart-data" }}
+<script>
+  window.HISTORICO_THRESHOLDS = {
+    tempMin: {{ temp_min }},
+    tempMax: {{ temp_max }},
+    humMin: {{ hum_min }},
+    humMax: {{ hum_max }}
+  };
+  window.HISTORICO_SELECTED_DATE = "{{ selected_date }}";
+  window.HISTORICO_SELECTED_HORA_INICIO = "{{ selected_hora_inicio }}";
+  window.HISTORICO_SELECTED_HORA_FIN = "{{ selected_hora_fin }}";
+</script>
+{% endblock %}

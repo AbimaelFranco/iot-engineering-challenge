@@ -222,3 +222,18 @@ __marimo__/
 
 # ESP-IDF build output
 firmware/ESP32/build/
+
+# ESP-IDF managed components (downloaded from the component registry via
+# main/idf_component.yml + dependencies.lock, which ARE tracked)
+firmware/ESP32/managed_components/
+
+# Credenciales locales (WiFi / MQTT) - nunca se suben al repo
+firmware/ESP32/main/secrets.h
+
+# Script local para despertar manualmente el servicio de Render - de uso
+# personal, no forma parte del despliegue ni se comparte en el repo
+backend/wake_render.py
+
+# Plantilla HTML/CSS de terceros usada como base para los templates de
+# Django - no es codigo propio, no se versiona
+backend/dashboard/plantilla/

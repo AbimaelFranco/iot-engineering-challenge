@@ -34,9 +34,9 @@
 #define WIFI_MAX_RETRY 5
 
 // MQTT: parámetros de conexión del Nodo A (ver tabla en Documentation/README.md)
-#define MQTT_CLIENT_ID "nodo-a"
+#define MQTT_CLIENT_ID "nodo-b"
 #define MQTT_KEEPALIVE_S 15
-#define MQTT_TOPIC_TELEMETRIA "iot-challenge/telemetria/nodo-a"
+#define MQTT_TOPIC_TELEMETRIA "iot-challenge/telemetria/nodo-b"
 #define MQTT_TELEMETRIA_QOS 0
 #define MQTT_TELEMETRIA_RETAIN 1
 
@@ -50,7 +50,7 @@ static volatile bool s_mqtt_connected = false;
 // desconectarse y libera el event group cuando obtiene IP o agota
 // los reintentos.
 static void wifi_event_handler(void *arg, esp_event_base_t event_base,
-                                int32_t event_id, void *event_data)
+                               int32_t event_id, void *event_data)
 {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START)
     {
@@ -116,7 +116,7 @@ static esp_err_t wifi_init_sta(void)
     printf("Conectando a WiFi SSID: %s...\n", WIFI_SSID);
 
     EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
-                                            pdFALSE, pdFALSE, portMAX_DELAY);
+                                           pdFALSE, pdFALSE, portMAX_DELAY);
 
     return (bits & WIFI_CONNECTED_BIT) ? ESP_OK : ESP_FAIL;
 }
@@ -145,7 +145,7 @@ static void time_sync_init(void)
 // estado de conexión, usado por mqtt_telemetry_publish() para no
 // intentar publicar mientras está desconectado.
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
-                                int32_t event_id, void *event_data)
+                               int32_t event_id, void *event_data)
 {
     (void)handler_args;
     (void)base;
@@ -246,7 +246,7 @@ esp_err_t mqtt_telemetry_publish(float temperature, float humidity, uint32_t sam
     }
 
     int msg_id = esp_mqtt_client_publish(s_mqtt_client, MQTT_TOPIC_TELEMETRIA, payload, 0,
-                                          MQTT_TELEMETRIA_QOS, MQTT_TELEMETRIA_RETAIN);
+                                         MQTT_TELEMETRIA_QOS, MQTT_TELEMETRIA_RETAIN);
     printf("Publicado en %s (msg_id=%d): %s\n", MQTT_TOPIC_TELEMETRIA, msg_id, payload);
 
     free(payload);

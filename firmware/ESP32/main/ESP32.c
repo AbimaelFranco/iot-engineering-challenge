@@ -1,15 +1,3 @@
-/*
- * Nodo A: lee temperatura y humedad del AHT10 y las publica por MQTT
- * (TLS) a HiveMQ Cloud, siguiendo la estructura de topics definida en
- * Documentation/README.md.
- *
- * Manejo del sensor: aht10_sensor.c/.h
- * WiFi + cliente MQTT: mqtt_telemetry.c/.h
- *
- * Credenciales de WiFi y del broker MQTT en "secrets.h" (no versionado,
- * ver .gitignore). Plantilla de referencia: "secrets.example.h".
- */
-
 #include <stdio.h>
 #include <stdint.h>
 
@@ -20,7 +8,7 @@
 #include "aht10/aht10_sensor.h"
 #include "mqtt/mqtt_telemetry.h"
 
-#define READ_PERIOD_MS 5000
+#define READ_PERIOD_MS 60000
 
 void app_main(void)
 {

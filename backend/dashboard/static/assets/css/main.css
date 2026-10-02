@@ -1244,8 +1244,7 @@ body.sidebar-minimized .sidebar-profile {
 
 /* Punto de estatus "online" (nodo conectado): nucleo solido + halo radial
    difuminado detras (::before) + animacion de "latido" (doble pulso, como
-   un corazon) en ambos. Cuando haya logica real de offline, basta con
-   quitar esta clase (o agregar una .status-dot-offline sin animacion). */
+   un corazon) en ambos. */
 .status-dot-online {
     position: relative;
     width: 8px;
@@ -1299,6 +1298,30 @@ body.sidebar-minimized .sidebar-profile {
         opacity: 0.8;
         transform: translate(-50%, -50%) scale(1.1);
     }
+}
+
+/* Punto de estatus "offline" (nodo desconectado, via LWT/status del
+   broker): nucleo solido sin halo ni animacion, para que se note en
+   contraste directo con el "latido" de .status-dot-online. */
+.status-dot-offline {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+    background-color: var(--sys-red);
+    box-shadow: 0 0 6px 1px rgba(239, 68, 68, 0.5);
+}
+
+/* Punto de estatus "desconocido" (aun no llego ningun mensaje de status
+   para ese nodo): gris apagado, sin halo ni animacion. */
+.status-dot-unknown {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+    background-color: #94A3B8;
 }
 
 /* Promo Banner Card */

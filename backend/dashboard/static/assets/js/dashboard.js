@@ -957,6 +957,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (hasNewPoints) {
                         tiemporealUpdateStatsDisplay();
                     }
+                    // El estado online/offline se revisa en cada poll (no solo
+                    // cuando hay lecturas nuevas): un nodo puede desconectarse
+                    // sin que eso dispare ninguna lectura de temperatura/humedad.
+                    tiemporealUpdateNodeStatusDisplay(data.nodeStatus);
                 })
                 .catch(function (err) {
                     console.error('Error consultando lecturas nuevas:', err);
@@ -1044,12 +1048,52 @@ document.addEventListener('DOMContentLoaded', function () {
             tiemporealSetText('tiemporeal-stat-hum-' + stat + '-a', tiemporealFormatValue(humStatsA[stat], '%'));
             tiemporealSetText('tiemporeal-stat-hum-' + stat + '-b', tiemporealFormatValue(humStatsB[stat], '%'));
         });
-        // La fila "Estatus" (antes "Muestras") es texto fijo por ahora (ver
-        // tiemporeal.html) - la logica de online/offline real se agrega despues.
+    }
+
+    // -----------------------------------------------------------------
+    // 2h. Tiempo Real Page: Estatus online/offline por nodo
+    // -----------------------------------------------------------------
+    // Refleja node_status_log (ver tiemporeal/models.py NodeStatus), que
+    // backend/telemetry-worker.py llena al llegar un mensaje de
+    // status/<node_id> (retained + LWT - ver Documentation/README.md). No
+    // hay logica de "stale" aqui a proposito: el LWT ya hace que el broker
+    // publique "offline" si un nodo se cae sin desconexion limpia, asi que
+    // el ultimo estado guardado en DB es confiable tal cual.
+    function tiemporealNodeLabel(nodeId) {
+        return nodeId === 'nodo-a' ? 'Nodo A' : 'Nodo B';
+    }
+
+    function tiemporealRenderNodeStatus(nodeId, status) {
+        const suffix = nodeId === 'nodo-a' ? 'a' : 'b';
+        const label = tiemporealNodeLabel(nodeId);
+        const state = status && status.state;
+        const dotClass = state === 'online' ? 'status-dot-online'
+            : state === 'offline' ? 'status-dot-offline'
+            : 'status-dot-unknown';
+        const text = state === 'online' ? label + ' online'
+            : state === 'offline' ? label + ' offline'
+            : label + ' --';
+
+        ['temp', 'hum'].forEach(function (kind) {
+            const dot = document.getElementById('tiemporeal-stat-' + kind + '-dot-' + suffix);
+            if (dot) {
+                dot.className = dotClass;
+            }
+            tiemporealSetText('tiemporeal-stat-' + kind + '-estatus-' + suffix, text);
+        });
+    }
+
+    function tiemporealUpdateNodeStatusDisplay(nodeStatus) {
+        if (!nodeStatus) {
+            return;
+        }
+        tiemporealRenderNodeStatus('nodo-a', nodeStatus['nodo-a']);
+        tiemporealRenderNodeStatus('nodo-b', nodeStatus['nodo-b']);
     }
 
     if (tiemporealDataEl) {
         tiemporealUpdateStatsDisplay();
+        tiemporealUpdateNodeStatusDisplay(tiemporealChartData.nodeStatus);
     }
 
     // -----------------------------------------------------------------

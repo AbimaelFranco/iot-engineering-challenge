@@ -39,6 +39,9 @@
 #define MQTT_TOPIC_TELEMETRIA "iot-challenge/telemetria/nodo-a"
 #define MQTT_TELEMETRIA_QOS 0
 #define MQTT_TELEMETRIA_RETAIN 1
+#define MQTT_TOPIC_ESTATUS "iot-challenge/status/nodo-a"
+#define MQTT_ESTATUS_RETAIN 1
+#define MQTT_ESTATUS_QOS 1
 
 static EventGroupHandle_t s_wifi_event_group;
 static int s_wifi_retry_num = 0;
@@ -155,6 +158,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
     case MQTT_EVENT_CONNECTED:
         s_mqtt_connected = true;
         printf("MQTT conectado a HiveMQ (client_id=%s)\n", MQTT_CLIENT_ID);
+        mqtt_estatus_publish();
         break;
     case MQTT_EVENT_DISCONNECTED:
         s_mqtt_connected = false;
@@ -181,6 +185,10 @@ static esp_err_t mqtt_init(void)
         .credentials.authentication.password = MQTT_PASSWORD,
         .session.keepalive = MQTT_KEEPALIVE_S,
         .session.disable_clean_session = false,
+        .session.last_will.topic = MQTT_TOPIC_ESTATUS,
+        .session.last_will.msg = "{\"state\":\"offline\"}",
+        .session.last_will.retain = MQTT_ESTATUS_RETAIN,
+        .session.last_will.qos = MQTT_ESTATUS_QOS,
     };
 
     s_mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
@@ -248,6 +256,32 @@ esp_err_t mqtt_telemetry_publish(float temperature, float humidity, uint32_t sam
     int msg_id = esp_mqtt_client_publish(s_mqtt_client, MQTT_TOPIC_TELEMETRIA, payload, 0,
                                          MQTT_TELEMETRIA_QOS, MQTT_TELEMETRIA_RETAIN);
     printf("Publicado en %s (msg_id=%d): %s\n", MQTT_TOPIC_TELEMETRIA, msg_id, payload);
+
+    free(payload);
+    return (msg_id >= 0) ? ESP_OK : ESP_FAIL;
+}
+
+esp_err_t mqtt_estatus_publish(void)
+{
+    if (!s_mqtt_connected)
+    {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddNumberToObject(root, "ts", (double)time(NULL));
+    cJSON_AddStringToObject(root, "state", "online");
+
+    char *payload = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    if (payload == NULL)
+    {
+        return ESP_ERR_NO_MEM;
+    }
+
+    int msg_id = esp_mqtt_client_publish(s_mqtt_client, MQTT_TOPIC_ESTATUS, payload, 0,
+                                         MQTT_ESTATUS_QOS, MQTT_ESTATUS_RETAIN);
+    printf("Publicado en %s (msg_id=%d): %s\n", MQTT_TOPIC_ESTATUS, msg_id, payload);
 
     free(payload);
     return (msg_id >= 0) ? ESP_OK : ESP_FAIL;

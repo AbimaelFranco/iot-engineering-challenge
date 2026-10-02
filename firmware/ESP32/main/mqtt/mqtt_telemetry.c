@@ -34,9 +34,9 @@
 #define WIFI_MAX_RETRY 5
 
 // MQTT: parámetros de conexión del Nodo A (ver tabla en Documentation/README.md)
-#define MQTT_CLIENT_ID "nodo-b"
+#define MQTT_CLIENT_ID "nodo-a"
 #define MQTT_KEEPALIVE_S 15
-#define MQTT_TOPIC_TELEMETRIA "iot-challenge/telemetria/nodo-b"
+#define MQTT_TOPIC_TELEMETRIA "iot-challenge/telemetria/nodo-a"
 #define MQTT_TELEMETRIA_QOS 0
 #define MQTT_TELEMETRIA_RETAIN 1
 

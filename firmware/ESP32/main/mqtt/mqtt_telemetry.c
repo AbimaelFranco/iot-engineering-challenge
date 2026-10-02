@@ -1,10 +1,11 @@
 /*
- * Conexión WiFi + cliente MQTT (TLS) del Nodo A hacia HiveMQ Cloud, y
+ * Conexión WiFi + cliente MQTT (TLS) de este nodo hacia HiveMQ Cloud, y
  * publicación de telemetría del AHT10 siguiendo la estructura de topics
  * definida en Documentation/README.md.
  *
- * Credenciales de WiFi y del broker MQTT en "secrets.h" (no versionado,
- * ver .gitignore). Plantilla de referencia: "secrets.example.h".
+ * Credenciales de WiFi/broker e identidad del nodo (NODE_ID) en
+ * "secrets.h" (no versionado, ver .gitignore). Plantilla de referencia:
+ * "secrets.example.h".
  */
 
 #include <stdio.h>
@@ -33,13 +34,16 @@
 #define WIFI_FAIL_BIT BIT1
 #define WIFI_MAX_RETRY 5
 
-// MQTT: parámetros de conexión del Nodo A (ver tabla en Documentation/README.md)
-#define MQTT_CLIENT_ID "nodo-a"
+// MQTT: parámetros de conexión del nodo (ver tabla en Documentation/README.md).
+// MQTT_CLIENT_ID y los topics se arman a partir de NODE_ID (secrets.h) por
+// concatenación de strings adyacentes: cambiar de Nodo A a Nodo B es
+// cuestión de cambiar un solo #define, no de tocar este archivo.
+#define MQTT_CLIENT_ID NODE_ID
 #define MQTT_KEEPALIVE_S 15
-#define MQTT_TOPIC_TELEMETRIA "iot-challenge/telemetria/nodo-a"
+#define MQTT_TOPIC_TELEMETRIA "iot-challenge/telemetria/" NODE_ID
 #define MQTT_TELEMETRIA_QOS 0
 #define MQTT_TELEMETRIA_RETAIN 1
-#define MQTT_TOPIC_ESTATUS "iot-challenge/status/nodo-a"
+#define MQTT_TOPIC_ESTATUS "iot-challenge/status/" NODE_ID
 #define MQTT_ESTATUS_RETAIN 1
 #define MQTT_ESTATUS_QOS 1
 
@@ -173,8 +177,9 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
 }
 
 // Configura y arranca el cliente MQTT (TLS + usuario/password) contra
-// HiveMQ Cloud, con los parámetros de conexión del Nodo A definidos en
-// Documentation/README.md (client_id, keepalive, clean_session).
+// HiveMQ Cloud, con los parámetros de conexión del nodo (NODE_ID en
+// secrets.h) según Documentation/README.md (client_id, keepalive,
+// clean_session).
 static esp_err_t mqtt_init(void)
 {
     esp_mqtt_client_config_t mqtt_cfg = {

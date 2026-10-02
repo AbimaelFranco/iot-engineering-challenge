@@ -5,6 +5,7 @@
 #include "freertos/task.h"
 #include "esp_err.h"
 
+#include "secrets.h"
 #include "aht10/aht10_sensor.h"
 #include "mqtt/mqtt_telemetry.h"
 
@@ -12,7 +13,7 @@
 
 void app_main(void)
 {
-    printf("\n=== NODO A - AHT10 + MQTT ===\n\n");
+    printf("\n=== " NODE_ID " - AHT10 + MQTT ===\n\n");
 
     // Sin WiFi/MQTT no hay forma de publicar telemetría: si falla, se aborta.
     if (mqtt_telemetry_init() != ESP_OK)

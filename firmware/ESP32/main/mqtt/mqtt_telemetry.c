@@ -1,10 +1,12 @@
 /*
- * Conexión WiFi + cliente MQTT (TLS) del Nodo A hacia HiveMQ Cloud, y
- * publicación de telemetría del AHT10 siguiendo la estructura de topics
+ * Conexión WiFi + cliente MQTT (TLS) de este nodo hacia HiveMQ Cloud,
+ * publicación de telemetría del AHT10 y suscripción al topic de
+ * configuración de alertas/alarmas, siguiendo la estructura de topics
  * definida en Documentation/README.md.
  *
- * Credenciales de WiFi y del broker MQTT en "secrets.h" (no versionado,
- * ver .gitignore). Plantilla de referencia: "secrets.example.h".
+ * Credenciales de WiFi/broker e identidad del nodo (NODE_ID) en
+ * "secrets.h" (no versionado, ver .gitignore). Plantilla de referencia:
+ * "secrets.example.h".
  */
 
 #include <stdio.h>
@@ -27,24 +29,190 @@
 
 #include "secrets.h"
 #include "mqtt_telemetry.h"
+#include "led_alarm/led_alarm.h"
+#include "buzzer/buzzer.h"
 
 // WiFi: bits del event group usados para esperar el resultado de conexión
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT BIT1
 #define WIFI_MAX_RETRY 5
 
-// MQTT: parámetros de conexión del Nodo A (ver tabla en Documentation/README.md)
-#define MQTT_CLIENT_ID "nodo-b"
+// MQTT: parámetros de conexión del nodo (ver tabla en Documentation/README.md).
+// MQTT_CLIENT_ID y los topics se arman a partir de NODE_ID (secrets.h) por
+// concatenación de strings adyacentes: cambiar de Nodo A a Nodo B es
+// cuestión de cambiar un solo #define, no de tocar este archivo.
+#define MQTT_CLIENT_ID NODE_ID
 #define MQTT_KEEPALIVE_S 15
-#define MQTT_TOPIC_TELEMETRIA "iot-challenge/telemetria/nodo-b"
+#define MQTT_TOPIC_TELEMETRIA "iot-challenge/telemetria/" NODE_ID
 #define MQTT_TELEMETRIA_QOS 0
 #define MQTT_TELEMETRIA_RETAIN 1
+#define MQTT_TOPIC_ESTATUS "iot-challenge/status/" NODE_ID
+#define MQTT_ESTATUS_RETAIN 1
+#define MQTT_ESTATUS_QOS 1
+#define MQTT_TOPIC_CONFIG "iot-challenge/config/" NODE_ID
+#define MQTT_CONFIG_QOS 1
+#define MQTT_TOPIC_CONFIG_ACK "iot-challenge/config/" NODE_ID "/ack"
+// QoS 1 a proposito: esta confirmacion es vital para el proyecto, asi que
+// se prefiere arriesgar un duplicado ocasional (si el PUBACK tarda mas de
+// message_retransmit_timeout -1000 ms por defecto en esp-mqtt- y la
+// libreria reenvia por su cuenta, el broker entrega el ack repetido al
+// suscriptor) a arriesgar perderlo por completo con QoS0. Si algun
+// consumidor necesita exactamente una fila por ack, debe deduplicar por
+// "ts" (ver Documentation/README.md), no bajar el QoS aqui.
+#define MQTT_CONFIG_ACK_QOS 1
+#define MQTT_CONFIG_ACK_RETAIN 0
 
 static EventGroupHandle_t s_wifi_event_group;
 static int s_wifi_retry_num = 0;
 
 static esp_mqtt_client_handle_t s_mqtt_client = NULL;
 static volatile bool s_mqtt_connected = false;
+
+// Ultima configuracion de alertas/alarmas recibida en MQTT_TOPIC_CONFIG.
+// visual_alarm_enabled y buzzer_enabled ya se usan para controlar el LED
+// (led_alarm.h) y el buzzer (buzzer.h); los umbrales de temp/hum se
+// guardan para uso futuro y de momento solo se imprimen (ver
+// handle_config_event()).
+typedef struct
+{
+    bool valida;
+    float temp_min;
+    float temp_max;
+    float hum_min;
+    float hum_max;
+    bool buzzer_enabled;
+    bool visual_alarm_enabled;
+} node_config_t;
+
+static node_config_t s_node_config = {0};
+
+// Responde en MQTT_TOPIC_CONFIG_ACK (ver formato en Documentation/README.md)
+// confirmando que se proceso un mensaje de MQTT_TOPIC_CONFIG. "ack_ts" es
+// el "ts" del mensaje que se esta confirmando (copiado tal cual, no
+// generado aqui) para que la plataforma pueda asociar este ack con el
+// mensaje especifico que lo origino; "reason" se ignora si ok=true.
+static void publish_config_ack(bool ok, double ack_ts, const char *reason)
+{
+    if (!s_mqtt_connected)
+    {
+        return;
+    }
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddNumberToObject(root, "ts", ack_ts);
+    cJSON_AddStringToObject(root, "status", ok ? "ok" : "error");
+
+    if (ok)
+    {
+        cJSON *applied = cJSON_CreateObject();
+        cJSON_AddNumberToObject(applied, "temp_min", s_node_config.temp_min);
+        cJSON_AddNumberToObject(applied, "temp_max", s_node_config.temp_max);
+        cJSON_AddNumberToObject(applied, "hum_min", s_node_config.hum_min);
+        cJSON_AddNumberToObject(applied, "hum_max", s_node_config.hum_max);
+        cJSON_AddBoolToObject(applied, "buzzer_enabled", s_node_config.buzzer_enabled);
+        cJSON_AddBoolToObject(applied, "visual_alarm_enabled", s_node_config.visual_alarm_enabled);
+        cJSON_AddItemToObject(root, "applied", applied);
+    }
+    else
+    {
+        cJSON_AddStringToObject(root, "reason", reason);
+    }
+
+    char *payload = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    if (payload == NULL)
+    {
+        return;
+    }
+
+    int msg_id = esp_mqtt_client_publish(s_mqtt_client, MQTT_TOPIC_CONFIG_ACK, payload, 0,
+                                         MQTT_CONFIG_ACK_QOS, MQTT_CONFIG_ACK_RETAIN);
+    printf("Publicado en %s (msg_id=%d): %s\n", MQTT_TOPIC_CONFIG_ACK, msg_id, payload);
+
+    free(payload);
+}
+
+// Procesa un mensaje recibido en MQTT_TOPIC_CONFIG (ver formato en
+// Documentation/README.md): lo parsea, lo guarda en s_node_config, lo
+// imprime por consola y siempre responde en MQTT_TOPIC_CONFIG_ACK (ok o
+// error, ver publish_config_ack()). Ignora mensajes fragmentados (data_len
+// distinto de total_data_len): el payload de config es un JSON chico que
+// siempre cabe en un solo evento con el tamano de buffer MQTT por
+// defecto, asi que fragmentarse indicaria algo inesperado y no vale la
+// pena reensamblarlo para este caso de uso.
+static void handle_config_event(esp_mqtt_event_handle_t event)
+{
+    if (event->data_len != event->total_data_len || event->current_data_offset != 0)
+    {
+        printf("Mensaje de configuracion fragmentado o incompleto, se descarta.\n");
+        publish_config_ack(false, (double)time(NULL), "fragmented");
+        return;
+    }
+
+    cJSON *root = cJSON_ParseWithLength(event->data, event->data_len);
+    if (root == NULL)
+    {
+        printf("Configuracion recibida con JSON invalido, se descarta.\n");
+        publish_config_ack(false, (double)time(NULL), "invalid_json");
+        return;
+    }
+
+    // Se copia tal cual en el ack (ver publish_config_ack()); si el
+    // mensaje no trae "ts" o no es numerico, se usa la hora local como
+    // mejor esfuerzo en vez de descartar el mensaje solo por eso.
+    cJSON *ts_field = cJSON_GetObjectItemCaseSensitive(root, "ts");
+    double ack_ts = cJSON_IsNumber(ts_field) ? ts_field->valuedouble : (double)time(NULL);
+
+    cJSON *temp_min = cJSON_GetObjectItemCaseSensitive(root, "temp_min");
+    cJSON *temp_max = cJSON_GetObjectItemCaseSensitive(root, "temp_max");
+    cJSON *hum_min = cJSON_GetObjectItemCaseSensitive(root, "hum_min");
+    cJSON *hum_max = cJSON_GetObjectItemCaseSensitive(root, "hum_max");
+    cJSON *buzzer_enabled = cJSON_GetObjectItemCaseSensitive(root, "buzzer_enabled");
+    cJSON *visual_alarm_enabled = cJSON_GetObjectItemCaseSensitive(root, "visual_alarm_enabled");
+
+    if (!cJSON_IsNumber(temp_min) || !cJSON_IsNumber(temp_max) ||
+        !cJSON_IsNumber(hum_min) || !cJSON_IsNumber(hum_max) ||
+        !cJSON_IsBool(buzzer_enabled) || !cJSON_IsBool(visual_alarm_enabled))
+    {
+        printf("Configuracion recibida con campos faltantes o invalidos, se descarta.\n");
+        cJSON_Delete(root);
+        publish_config_ack(false, ack_ts, "invalid_fields");
+        return;
+    }
+
+    s_node_config.valida = true;
+    s_node_config.temp_min = (float)temp_min->valuedouble;
+    s_node_config.temp_max = (float)temp_max->valuedouble;
+    s_node_config.hum_min = (float)hum_min->valuedouble;
+    s_node_config.hum_max = (float)hum_max->valuedouble;
+    s_node_config.buzzer_enabled = cJSON_IsTrue(buzzer_enabled);
+    s_node_config.visual_alarm_enabled = cJSON_IsTrue(visual_alarm_enabled);
+
+    cJSON_Delete(root);
+
+    // Confirmacion de recepcion: 2 pulsos rapidos (100ms) en LED y buzzer,
+    // sin importar si las alarmas estan habilitadas o no. Interrumpe de
+    // inmediato el patron de fondo vigente y, al terminar, los dos set_*
+    // de abajo retoman (o cambian) ese patron de fondo.
+    led_alarm_pulse(2, 100, 100);
+    buzzer_pulse(2, 100, 100);
+
+    // 1000/3000 ms (1s encendido/sonando, 3s apagado/silencio): cadencia
+    // de las alarmas visual y sonora, decidida aqui (led_alarm/buzzer no
+    // conocen esta semantica).
+    led_alarm_set_enabled(s_node_config.visual_alarm_enabled, 1000, 3000);
+    buzzer_set_enabled(s_node_config.buzzer_enabled, 1000, 3000);
+
+    printf("Configuracion recibida en %s (retained=%d): temp_min=%.1f temp_max=%.1f "
+           "hum_min=%.1f hum_max=%.1f buzzer_enabled=%s visual_alarm_enabled=%s\n",
+           MQTT_TOPIC_CONFIG, event->retain,
+           s_node_config.temp_min, s_node_config.temp_max,
+           s_node_config.hum_min, s_node_config.hum_max,
+           s_node_config.buzzer_enabled ? "true" : "false",
+           s_node_config.visual_alarm_enabled ? "true" : "false");
+
+    publish_config_ack(true, ack_ts, NULL);
+}
 
 // Maneja los eventos de WiFi/IP durante la conexión: reintenta al
 // desconectarse y libera el event group cuando obtiene IP o agota
@@ -141,9 +309,10 @@ static void time_sync_init(void)
     }
 }
 
-// Maneja los eventos del cliente MQTT. De momento solo trackea el
-// estado de conexión, usado por mqtt_telemetry_publish() para no
-// intentar publicar mientras está desconectado.
+// Maneja los eventos del cliente MQTT: trackea el estado de conexión
+// (usado por mqtt_telemetry_publish() para no intentar publicar mientras
+// está desconectado), se suscribe a MQTT_TOPIC_CONFIG al conectar y
+// procesa los mensajes de configuración que lleguen por ese topic.
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
                                int32_t event_id, void *event_data)
 {
@@ -153,12 +322,24 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
     switch ((esp_mqtt_event_id_t)event_id)
     {
     case MQTT_EVENT_CONNECTED:
+    {
         s_mqtt_connected = true;
         printf("MQTT conectado a HiveMQ (client_id=%s)\n", MQTT_CLIENT_ID);
+        mqtt_estatus_publish();
+        int sub_msg_id = esp_mqtt_client_subscribe(s_mqtt_client, MQTT_TOPIC_CONFIG, MQTT_CONFIG_QOS);
+        printf("Suscrito a %s (msg_id=%d)\n", MQTT_TOPIC_CONFIG, sub_msg_id);
         break;
+    }
     case MQTT_EVENT_DISCONNECTED:
         s_mqtt_connected = false;
         printf("MQTT desconectado\n");
+        break;
+    case MQTT_EVENT_DATA:
+        // MQTT_TOPIC_CONFIG es la unica suscripcion de este cliente, asi
+        // que todo MQTT_EVENT_DATA es necesariamente de ese topic; si se
+        // agregan mas suscripciones a futuro, aqui hay que revisar
+        // event->topic antes de asumirlo.
+        handle_config_event((esp_mqtt_event_handle_t)event_data);
         break;
     case MQTT_EVENT_ERROR:
         printf("MQTT ERROR\n");
@@ -169,8 +350,9 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
 }
 
 // Configura y arranca el cliente MQTT (TLS + usuario/password) contra
-// HiveMQ Cloud, con los parámetros de conexión del Nodo A definidos en
-// Documentation/README.md (client_id, keepalive, clean_session).
+// HiveMQ Cloud, con los parámetros de conexión del nodo (NODE_ID en
+// secrets.h) según Documentation/README.md (client_id, keepalive,
+// clean_session).
 static esp_err_t mqtt_init(void)
 {
     esp_mqtt_client_config_t mqtt_cfg = {
@@ -181,6 +363,10 @@ static esp_err_t mqtt_init(void)
         .credentials.authentication.password = MQTT_PASSWORD,
         .session.keepalive = MQTT_KEEPALIVE_S,
         .session.disable_clean_session = false,
+        .session.last_will.topic = MQTT_TOPIC_ESTATUS,
+        .session.last_will.msg = "{\"state\":\"offline\"}",
+        .session.last_will.retain = MQTT_ESTATUS_RETAIN,
+        .session.last_will.qos = MQTT_ESTATUS_QOS,
     };
 
     s_mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
@@ -248,6 +434,32 @@ esp_err_t mqtt_telemetry_publish(float temperature, float humidity, uint32_t sam
     int msg_id = esp_mqtt_client_publish(s_mqtt_client, MQTT_TOPIC_TELEMETRIA, payload, 0,
                                          MQTT_TELEMETRIA_QOS, MQTT_TELEMETRIA_RETAIN);
     printf("Publicado en %s (msg_id=%d): %s\n", MQTT_TOPIC_TELEMETRIA, msg_id, payload);
+
+    free(payload);
+    return (msg_id >= 0) ? ESP_OK : ESP_FAIL;
+}
+
+esp_err_t mqtt_estatus_publish(void)
+{
+    if (!s_mqtt_connected)
+    {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddNumberToObject(root, "ts", (double)time(NULL));
+    cJSON_AddStringToObject(root, "state", "online");
+
+    char *payload = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    if (payload == NULL)
+    {
+        return ESP_ERR_NO_MEM;
+    }
+
+    int msg_id = esp_mqtt_client_publish(s_mqtt_client, MQTT_TOPIC_ESTATUS, payload, 0,
+                                         MQTT_ESTATUS_QOS, MQTT_ESTATUS_RETAIN);
+    printf("Publicado en %s (msg_id=%d): %s\n", MQTT_TOPIC_ESTATUS, msg_id, payload);
 
     free(payload);
     return (msg_id >= 0) ? ESP_OK : ESP_FAIL;

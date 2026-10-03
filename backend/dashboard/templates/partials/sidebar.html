@@ -47,7 +47,9 @@
           </a>
         </li>
         <li class="sidebar-menu-item">
-          <a href="#" class="sidebar-menu-link" id="menu-configuracion" title="Configuracion">
+          <a href="{% url 'configuracion' %}"
+            class="sidebar-menu-link{% if request.resolver_match.url_name == 'configuracion' %} active{% endif %}"
+            id="menu-configuracion" title="Configuracion">
             <i class="bi bi-gear-fill"></i>
             <span>Configuracion</span>
           </a>

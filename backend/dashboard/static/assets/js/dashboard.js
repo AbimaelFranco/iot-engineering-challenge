@@ -957,6 +957,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (hasNewPoints) {
                         tiemporealUpdateStatsDisplay();
                     }
+                    // El estado online/offline se revisa en cada poll (no solo
+                    // cuando hay lecturas nuevas): un nodo puede desconectarse
+                    // sin que eso dispare ninguna lectura de temperatura/humedad.
+                    tiemporealUpdateNodeStatusDisplay(data.nodeStatus);
                 })
                 .catch(function (err) {
                     console.error('Error consultando lecturas nuevas:', err);
@@ -1044,12 +1048,52 @@ document.addEventListener('DOMContentLoaded', function () {
             tiemporealSetText('tiemporeal-stat-hum-' + stat + '-a', tiemporealFormatValue(humStatsA[stat], '%'));
             tiemporealSetText('tiemporeal-stat-hum-' + stat + '-b', tiemporealFormatValue(humStatsB[stat], '%'));
         });
-        // La fila "Estatus" (antes "Muestras") es texto fijo por ahora (ver
-        // tiemporeal.html) - la logica de online/offline real se agrega despues.
+    }
+
+    // -----------------------------------------------------------------
+    // 2h. Tiempo Real Page: Estatus online/offline por nodo
+    // -----------------------------------------------------------------
+    // Refleja node_status_log (ver tiemporeal/models.py NodeStatus), que
+    // backend/telemetry-worker.py llena al llegar un mensaje de
+    // status/<node_id> (retained + LWT - ver Documentation/README.md). No
+    // hay logica de "stale" aqui a proposito: el LWT ya hace que el broker
+    // publique "offline" si un nodo se cae sin desconexion limpia, asi que
+    // el ultimo estado guardado en DB es confiable tal cual.
+    function tiemporealNodeLabel(nodeId) {
+        return nodeId === 'nodo-a' ? 'Nodo A' : 'Nodo B';
+    }
+
+    function tiemporealRenderNodeStatus(nodeId, status) {
+        const suffix = nodeId === 'nodo-a' ? 'a' : 'b';
+        const label = tiemporealNodeLabel(nodeId);
+        const state = status && status.state;
+        const dotClass = state === 'online' ? 'status-dot-online'
+            : state === 'offline' ? 'status-dot-offline'
+            : 'status-dot-unknown';
+        const text = state === 'online' ? label + ' online'
+            : state === 'offline' ? label + ' offline'
+            : label + ' --';
+
+        ['temp', 'hum'].forEach(function (kind) {
+            const dot = document.getElementById('tiemporeal-stat-' + kind + '-dot-' + suffix);
+            if (dot) {
+                dot.className = dotClass;
+            }
+            tiemporealSetText('tiemporeal-stat-' + kind + '-estatus-' + suffix, text);
+        });
+    }
+
+    function tiemporealUpdateNodeStatusDisplay(nodeStatus) {
+        if (!nodeStatus) {
+            return;
+        }
+        tiemporealRenderNodeStatus('nodo-a', nodeStatus['nodo-a']);
+        tiemporealRenderNodeStatus('nodo-b', nodeStatus['nodo-b']);
     }
 
     if (tiemporealDataEl) {
         tiemporealUpdateStatsDisplay();
+        tiemporealUpdateNodeStatusDisplay(tiemporealChartData.nodeStatus);
     }
 
     // -----------------------------------------------------------------
@@ -1375,6 +1419,311 @@ document.addEventListener('DOMContentLoaded', function () {
                 window.dispatchEvent(new Event('resize'));
             }, 300);
         });
+    }
+
+    // -----------------------------------------------------------------
+    // 7. Configuracion Page: Parametros de alerta + alarmas (MQTT retained)
+    // -----------------------------------------------------------------
+    const configNodeDataEl = document.getElementById('config-node-data');
+    if (configNodeDataEl) {
+        const configNodeData = JSON.parse(configNodeDataEl.textContent);
+
+        const configNodeTarget = document.getElementById('config-node-target');
+        const configTempMin = document.getElementById('config-temp-min');
+        const configTempMax = document.getElementById('config-temp-max');
+        const configHumMin = document.getElementById('config-hum-min');
+        const configHumMax = document.getElementById('config-hum-max');
+        const configBuzzer = document.getElementById('config-buzzer-enabled');
+        const configVisualAlarm = document.getElementById('config-visual-alarm-enabled');
+        const configRangoError = document.getElementById('config-rango-error');
+        const configAlertArea = document.getElementById('config-alert-area');
+        const configBtnActualizar = document.getElementById('config-btn-actualizar');
+        const configBtnConfirmar = document.getElementById('config-btn-confirmar');
+        const configConfirmTarget = document.getElementById('config-confirm-target');
+        const configConfirmSummary = document.getElementById('config-confirm-summary');
+        const configModalEl = document.getElementById('config-confirm-modal');
+        const configModal = (configModalEl && window.bootstrap) ? new bootstrap.Modal(configModalEl) : null;
+
+        const configNodeLabels = {
+            'nodo-a': 'Nodo A',
+            'nodo-b': 'Nodo B',
+            'ambos': 'Ambos nodos (Nodo A + Nodo B)'
+        };
+
+        // "Ambos" no tiene un estado propio: al elegirlo se parte de los
+        // valores actuales del Nodo A como punto de partida para editar.
+        function configFillForm(nodeId) {
+            const baseline = configNodeData[nodeId] || configNodeData['nodo-a'];
+            if (!baseline) {
+                return;
+            }
+            configTempMin.value = baseline.temp_min;
+            configTempMax.value = baseline.temp_max;
+            configHumMin.value = baseline.hum_min;
+            configHumMax.value = baseline.hum_max;
+            configBuzzer.checked = !!baseline.buzzer_enabled;
+            configVisualAlarm.checked = !!baseline.visual_alarm_enabled;
+        }
+
+        if (configNodeTarget) {
+            configFillForm(configNodeTarget.value);
+            configNodeTarget.addEventListener('change', function () {
+                configFillForm(configNodeTarget.value);
+            });
+        }
+
+        // Inserta arriba de lo que ya hubiera (no reemplaza): el polling de
+        // acks (ver mas abajo) puede mostrar varios avisos seguidos (uno
+        // por nodo) y no deben taparse entre si. Cada uno se puede cerrar
+        // por separado con su propia "x".
+        function configShowAlert(type, message) {
+            if (!configAlertArea) {
+                return;
+            }
+            const div = document.createElement('div');
+            div.className = 'alert-custom alert-custom-' + type;
+            div.innerHTML =
+                '<i class="bi ' + (type === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill') + ' alert-custom-icon"></i>' +
+                '<div class="alert-custom-content">' + message + '</div>' +
+                '<button class="alert-custom-close" type="button" aria-label="Close" onclick="this.parentElement.remove();"><i class="bi bi-x-lg"></i></button>';
+            configAlertArea.insertBefore(div, configAlertArea.firstChild);
+        }
+
+        function configReadForm() {
+            return {
+                node_target: configNodeTarget.value,
+                temp_min: parseFloat(configTempMin.value),
+                temp_max: parseFloat(configTempMax.value),
+                hum_min: parseFloat(configHumMin.value),
+                hum_max: parseFloat(configHumMax.value),
+                buzzer_enabled: configBuzzer.checked,
+                visual_alarm_enabled: configVisualAlarm.checked
+            };
+        }
+
+        function configValidate(payload) {
+            if ([payload.temp_min, payload.temp_max, payload.hum_min, payload.hum_max].some(isNaN)) {
+                return 'Todos los limites deben ser numericos.';
+            }
+            if (payload.temp_min >= payload.temp_max) {
+                return 'La temperatura minima debe ser menor que la maxima.';
+            }
+            if (payload.hum_min >= payload.hum_max) {
+                return 'La humedad minima debe ser menor que la maxima.';
+            }
+            return null;
+        }
+
+        let configPendingPayload = null;
+
+        if (configBtnActualizar) {
+            configBtnActualizar.addEventListener('click', function () {
+                const payload = configReadForm();
+                const errorMsg = configValidate(payload);
+                if (configRangoError) {
+                    configRangoError.classList.toggle('d-none', !errorMsg);
+                    if (errorMsg) {
+                        configRangoError.querySelector('span').textContent = errorMsg;
+                    }
+                }
+                if (errorMsg) {
+                    return;
+                }
+
+                configPendingPayload = payload;
+                if (configConfirmTarget) {
+                    configConfirmTarget.textContent = configNodeLabels[payload.node_target] || payload.node_target;
+                }
+                if (configConfirmSummary) {
+                    configConfirmSummary.innerHTML =
+                        '<li>Temperatura: ' + payload.temp_min + '&deg;C - ' + payload.temp_max + '&deg;C</li>' +
+                        '<li>Humedad: ' + payload.hum_min + '% - ' + payload.hum_max + '%</li>' +
+                        '<li>Alarma sonora: ' + (payload.buzzer_enabled ? 'Activada' : 'Desactivada') + '</li>' +
+                        '<li>Alarma visual: ' + (payload.visual_alarm_enabled ? 'Activada' : 'Desactivada') + '</li>';
+                }
+
+                if (configModal) {
+                    configModal.show();
+                }
+            });
+        }
+
+        function configGetCsrfToken() {
+            const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+            return match ? decodeURIComponent(match[1]) : '';
+        }
+
+        // Feedback visual de "en vuelo": la publicacion MQTT puede tardar
+        // varios segundos (hasta el timeout de PUBLISH_ACK_TIMEOUT_S en
+        // mqtt_publish.py si el broker no confirma), asi que sin esto el
+        // usuario no tenia forma de saber si el click si se registro.
+        // Cancelar/cerrar se deshabilitan mientras tanto (y el modal usa
+        // backdrop estatico) para que no se pueda abandonar el dialogo a
+        // mitad de un envio que ya esta en curso del lado del servidor.
+        const configBtnConfirmarContent = configBtnConfirmar ? configBtnConfirmar.querySelector('.config-btn-confirmar-content') : null;
+        const configBtnConfirmarLoading = configBtnConfirmar ? configBtnConfirmar.querySelector('.config-btn-confirmar-loading') : null;
+        const configBtnCancelar = document.getElementById('config-btn-cancelar');
+        const configModalCloseBtn = document.getElementById('config-modal-close-btn');
+
+        function configSetSending(isSending) {
+            if (configBtnConfirmar) {
+                configBtnConfirmar.disabled = isSending;
+            }
+            if (configBtnConfirmarContent) {
+                configBtnConfirmarContent.classList.toggle('d-none', isSending);
+            }
+            if (configBtnConfirmarLoading) {
+                configBtnConfirmarLoading.classList.toggle('d-none', !isSending);
+            }
+            if (configBtnCancelar) {
+                configBtnCancelar.disabled = isSending;
+            }
+            if (configModalCloseBtn) {
+                configModalCloseBtn.disabled = isSending;
+            }
+        }
+
+        if (configBtnConfirmar) {
+            configBtnConfirmar.addEventListener('click', function () {
+                if (!configPendingPayload) {
+                    return;
+                }
+                configSetSending(true);
+                fetch(window.CONFIG_ACTUALIZAR_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': configGetCsrfToken()
+                    },
+                    body: JSON.stringify(configPendingPayload)
+                })
+                    .then(function (res) {
+                        return res.json().then(function (data) { return { ok: res.ok, data: data }; });
+                    })
+                    .then(function (result) {
+                        if (configModal) {
+                            configModal.hide();
+                        }
+                        if (result.ok && result.data.ok) {
+                            // Sin mensaje inline aqui ni recarga de pagina:
+                            // la confirmacion real (que el nodo de verdad
+                            // la recibio y aplico) llega por separado como
+                            // toast via el polling de acks de abajo, que
+                            // necesita seguir corriendo en esta misma
+                            // pagina para no perderla.
+                        } else {
+                            configShowAlert('danger', result.data.error || 'No se pudo publicar la configuracion.');
+                        }
+                    })
+                    .catch(function (err) {
+                        if (configModal) {
+                            configModal.hide();
+                        }
+                        configShowAlert('danger', 'Error de red al publicar la configuracion.');
+                        console.error('Error publicando configuracion:', err);
+                    })
+                    .finally(function () {
+                        configSetSending(false);
+                        configPendingPayload = null;
+                    });
+            });
+        }
+
+        // -------------------------------------------------------------
+        // Configuracion Page: Polling de acks de confirmacion (config/.../ack)
+        // -------------------------------------------------------------
+        // Mismo patron de polling que Tiempo Real (tiemporealPoll() mas
+        // arriba, ver tiemporeal/views.py -> tiemporeal_latest): el
+        // navegador pregunta cada pocos segundos en vez de abrir una
+        // conexion MQTT propia. Aqui se reciclo para leer los acks que el
+        // nodo publica en config/<node_id>/ack al procesar cada mensaje
+        // de configuracion (ver configuracion_ack_latest en
+        // configuracion/views.py).
+        const configAckToastArea = document.getElementById('config-ack-toast-area');
+
+        // Toast fijo arriba de la pantalla (no el inline de configShowAlert):
+        // el ack puede llegar en cualquier momento, sin importar donde este
+        // viendo el usuario, asi que no conviene que dependa de scroll.
+        // Se queda 10s y luego se difumina (config-ack-toast-fade en
+        // main.css) antes de quitarse del DOM.
+        function configShowAckToast(type, message) {
+            if (!configAckToastArea) {
+                return;
+            }
+            const div = document.createElement('div');
+            div.className = 'alert-custom alert-custom-' + type + ' config-ack-toast';
+            div.innerHTML =
+                '<i class="bi ' + (type === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill') + ' alert-custom-icon"></i>' +
+                '<div class="alert-custom-content">' + message + '</div>' +
+                '<button class="alert-custom-close" type="button" aria-label="Close"><i class="bi bi-x-lg"></i></button>';
+
+            let dismissTimer = null;
+            function dismiss() {
+                if (dismissTimer) {
+                    clearTimeout(dismissTimer);
+                }
+                div.classList.add('config-ack-toast-fade');
+                div.addEventListener('transitionend', function () {
+                    div.remove();
+                }, { once: true });
+            }
+
+            div.querySelector('.alert-custom-close').addEventListener('click', dismiss);
+            configAckToastArea.appendChild(div);
+            dismissTimer = setTimeout(dismiss, 10000);
+        }
+
+        if (window.CONFIG_ACK_LATEST_URL) {
+            const configAckReasonLabels = {
+                invalid_json: 'JSON invalido',
+                invalid_fields: 'campos invalidos o faltantes',
+                fragmented: 'mensaje fragmentado'
+            };
+            const configAckNodeLabels = { 'nodo-a': 'Nodo A', 'nodo-b': 'Nodo B' };
+
+            let configAckSince = window.CONFIG_ACK_SINCE_INIT || 0;
+            let configAckPolling = false;
+
+            function configAckMessage(ack) {
+                const label = configAckNodeLabels[ack.node_id] || ack.node_id;
+                if (ack.status === 'ok') {
+                    if (ack.applied) {
+                        return label + ' confirmo la nueva configuracion: ' +
+                            ack.applied.temp_min + '&deg;C - ' + ack.applied.temp_max + '&deg;C, ' +
+                            ack.applied.hum_min + '% - ' + ack.applied.hum_max + '%.';
+                    }
+                    return label + ' confirmo la nueva configuracion.';
+                }
+                const reason = configAckReasonLabels[ack.reason] || ack.reason || 'motivo desconocido';
+                return label + ' no pudo aplicar la configuracion (' + reason + ').';
+            }
+
+            function configAckPoll() {
+                if (configAckPolling) {
+                    return;
+                }
+                configAckPolling = true;
+                fetch(window.CONFIG_ACK_LATEST_URL + '?since=' + configAckSince)
+                    .then(function (res) { return res.json(); })
+                    .then(function (data) {
+                        (data.acks || []).forEach(function (ack) {
+                            configShowAckToast(ack.status === 'ok' ? 'success' : 'danger', configAckMessage(ack));
+                        });
+                        if (data.lastEpochMs != null) {
+                            configAckSince = data.lastEpochMs;
+                        }
+                    })
+                    .catch(function (err) {
+                        console.error('Error consultando acks de configuracion:', err);
+                    })
+                    .finally(function () {
+                        configAckPolling = false;
+                    });
+            }
+
+            configAckPoll();
+            setInterval(configAckPoll, 5000);
+        }
     }
 
 });

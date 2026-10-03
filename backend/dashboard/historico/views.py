@@ -4,6 +4,8 @@ from datetime import date, datetime, time, timedelta, timezone
 
 from django.shortcuts import render
 
+from configuracion.models import NodeConfigLog
+
 from .models import NodeReading
 
 NODE_IDS = ["nodo-a", "nodo-b"]
@@ -148,19 +150,23 @@ def historico(request):
     hum_stats_a = _stats(hums_a)
     hum_stats_b = _stats(hums_b)
 
+    # Umbrales realmente publicados desde Configuracion (node_config_log),
+    # no un valor fijo en el codigo - ver NodeConfigLog.latest_thresholds.
+    thresholds = NodeConfigLog.latest_thresholds("nodo-a")
+
     context = {
         "selected_date": selected_date.strftime("%Y-%m-%d"),
         "selected_date_display": f"{selected_date.day} de {MESES_ES[selected_date.month - 1]} de {selected_date.year}",
         "selected_hora_inicio": hora_inicio.strftime("%H:%M"),
         "selected_hora_fin": hora_fin.strftime("%H:%M"),
         "selected_hora_display": f"{hora_inicio.strftime('%H:%M')} - {hora_fin.strftime('%H:%M')}",
-        "temp_min": 18,
-        "temp_max": 30,
+        "temp_min": thresholds["temp_min"],
+        "temp_max": thresholds["temp_max"],
         "temp_avg": temp_stats_all["promedio"],
         "temp_avg_a": temp_stats_a["promedio"],
         "temp_avg_b": temp_stats_b["promedio"],
-        "hum_min": 30,
-        "hum_max": 80,
+        "hum_min": thresholds["hum_min"],
+        "hum_max": thresholds["hum_max"],
         "hum_avg": hum_stats_all["promedio"],
         "hum_avg_a": hum_stats_a["promedio"],
         "hum_avg_b": hum_stats_b["promedio"],

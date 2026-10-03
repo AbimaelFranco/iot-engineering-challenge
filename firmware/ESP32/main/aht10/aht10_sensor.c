@@ -2,7 +2,7 @@
  * Manejo del sensor AHT10 (temperatura/humedad) por I2C.
  *
  * I2C:   SDA = GPIO21, SCL = GPIO22
- * AHT10: dirección 0x38
+ * AHT10: dirección definida por nodo en secrets.h (AHT10_I2C_ADDR)
  */
 
 #include <stdio.h>
@@ -13,6 +13,7 @@
 #include "driver/i2c_master.h"
 #include "esp_err.h"
 
+#include "secrets.h"
 #include "aht10_sensor.h"
 
 #define I2C_PORT I2C_NUM_0
@@ -21,7 +22,7 @@
 #define I2C_FREQ_HZ 100000
 #define I2C_TIMEOUT_MS 100
 
-#define AHT10_ADDR 0x39
+#define AHT10_ADDR AHT10_I2C_ADDR
 #define AHT10_CMD_INIT 0xE1
 #define AHT10_CMD_MEASURE 0xAC
 #define AHT10_STATUS_BUSY 0x80

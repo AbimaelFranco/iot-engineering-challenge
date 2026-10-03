@@ -5,7 +5,9 @@ from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_GET
 
-from .models import NodeReading
+from configuracion.models import NodeConfigLog
+
+from .models import NodeReading, NodeStatus
 
 NODE_IDS = ["nodo-a", "nodo-b"]
 
@@ -35,6 +37,33 @@ def _to_epoch_ms(naive_dt):
     # que ApexCharts, configurado con datetimeUTC=true, muestre exactamente
     # la misma hora de pared que quedo guardada, sin un doble corrimiento.
     return int(naive_dt.replace(tzinfo=timezone.utc).timestamp() * 1000)
+
+
+def _latest_status_by_node():
+    """Ultimo estado online/offline conocido de cada nodo (tabla
+    node_status_log, llenada por backend/telemetry-worker.py al llegar un
+    mensaje de status/<node_id>, retained + LWT - ver Documentation/README.md).
+
+    Al ser retained, el broker reentrega el ultimo estado a cualquier
+    suscriptor nuevo (incluido telemetry-worker al reconectar), y el LWT
+    hace que el broker mismo publique "offline" si un nodo se cae sin
+    desconexion limpia. Por eso basta con leer la ultima fila por nodo: no
+    hace falta ninguna logica de "stale" aqui, la deteccion de
+    desconexion ya ocurre del lado del broker/MQTT.
+    """
+    status = {}
+    for node_id in NODE_IDS:
+        row = (
+            NodeStatus.objects.filter(node_id=node_id)
+            .order_by("-received_at")
+            .values("state", "received_at")
+            .first()
+        )
+        status[node_id] = {
+            "state": row["state"] if row else None,
+            "receivedEpochMs": _to_epoch_ms(row["received_at"]) if row else None,
+        }
+    return status
 
 
 def _series_promedio(readings, field):
@@ -115,13 +144,17 @@ def tiemporeal(request):
     else:
         x_min = x_max = None
 
+    # Umbrales realmente publicados desde Configuracion (node_config_log),
+    # no un valor fijo en el codigo - ver NodeConfigLog.latest_thresholds.
+    thresholds = NodeConfigLog.latest_thresholds("nodo-a")
+
     context = {
         "selected_hora_inicio": hora_inicio.strftime("%H:%M"),
         "selected_hora_display": f"{hora_inicio.strftime('%H:%M')} - Ahora",
-        "temp_min": 18,
-        "temp_max": 30,
-        "hum_min": 30,
-        "hum_max": 80,
+        "temp_min": thresholds["temp_min"],
+        "temp_max": thresholds["temp_max"],
+        "hum_min": thresholds["hum_min"],
+        "hum_max": thresholds["hum_max"],
         "tiemporeal_chart_data": {
             "tempSeriesA": temp_series_a,
             "tempSeriesB": temp_series_b,
@@ -131,6 +164,7 @@ def tiemporeal(request):
             "humSeriesAvg": hum_series_avg,
             "xMin": x_min,
             "xMax": x_max,
+            "nodeStatus": _latest_status_by_node(),
         },
     }
     return render(request, "tiemporeal.html", context)
@@ -187,4 +221,5 @@ def tiemporeal_latest(request):
         "humSeriesA": [[_to_epoch_ms(r["reading_time"]), r["humidity"]] for r in by_node["nodo-a"]],
         "humSeriesB": [[_to_epoch_ms(r["reading_time"]), r["humidity"]] for r in by_node["nodo-b"]],
         "lastEpochMs": last_epoch_ms,
+        "nodeStatus": _latest_status_by_node(),
     })

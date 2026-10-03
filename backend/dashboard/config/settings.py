@@ -19,7 +19,13 @@ from dotenv import load_dotenv
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-load_dotenv(BASE_DIR / ".env")
+# override=True: sin esto, python-dotenv no pisa una variable que ya este
+# en el entorno del proceso. Con el autoreload de "runserver" (que reexec'ea
+# el proceso pero le hereda el mismo os.environ, no uno nuevo del shell), un
+# .env editado mientras el server seguia corriendo se quedaba sin aplicar
+# nunca -> caso real: MQTT_USERNAME quedo pegado al valor viejo (sin permiso
+# de Publish) varios reinicios despues de haberlo corregido en el archivo.
+load_dotenv(BASE_DIR / ".env", override=True)
 
 
 # Quick-start development settings - unsuitable for production
@@ -52,6 +58,7 @@ INSTALLED_APPS = [
     'home',
     'historico',
     'tiemporeal',
+    'configuracion',
 ]
 
 MIDDLEWARE = [
@@ -94,6 +101,17 @@ if not DATABASE_URL:
     raise RuntimeError(
         "DATABASE_URL no esta definida. Copia .env.example a .env y completa los valores."
     )
+
+# MQTT (broker HiveMQ, ver backend/.env.example para la plantilla completa).
+# El dashboard solo PUBLICA retained a traves de la vista de Configuracion
+# (ver configuracion/mqtt_publish.py, topic config/<node_id> documentado en
+# Documentation/README.md); nunca se suscribe ni mueve credenciales al
+# navegador.
+MQTT_HOST = os.environ.get("MQTT_HOST", "")
+MQTT_PORT = int(os.environ.get("MQTT_PORT", "8883"))
+MQTT_USERNAME = os.environ.get("MQTT_USERNAME", "")
+MQTT_PASSWORD = os.environ.get("MQTT_PASSWORD", "")
+MQTT_CLIENT_ID = os.environ.get("MQTT_CLIENT_ID", "dashboard_config_publisher")
 
 _db_url = urlparse(DATABASE_URL)
 

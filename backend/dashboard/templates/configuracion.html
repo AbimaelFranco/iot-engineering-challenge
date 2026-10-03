@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+
+{% block title %}Configuracion - IoT Admin{% endblock %}
+
+{% block content %}
+    {% csrf_token %}
+    <!-- Toasts de confirmacion de recepcion (config/.../ack), fijos arriba
+         de todo el contenido: el ack puede llegar en cualquier momento
+         mientras el polling corre (ver dashboard.js), sin importar en que
+         parte de la pagina este viendo el usuario. -->
+    <div id="config-ack-toast-area" class="config-ack-toast-area" aria-live="polite"></div>
+
+    <!-- START: Page Header Banner -->
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Configuracion</h1>
+        <p class="page-subtitle">Parametros de alerta y alarmas enviados a los nodos por MQTT (retained).</p>
+      </div>
+    </div>
+    <!-- END: Page Header Banner -->
+
+    <div class="row g-4">
+
+      <!-- Columna principal: formulario -->
+      <div class="col-12 col-xl-8">
+        <div class="card border-light shadow-sm p-4 mb-4">
+          <h5 class="card-title mb-1">Nodo objetivo</h5>
+          <p class="text-muted mb-3">Elige a que nodo se le envia esta configuracion.</p>
+          <select class="form-select-custom" id="config-node-target">
+            <option value="ambos" selected>Ambos nodos (Nodo A + Nodo B)</option>
+            <option value="nodo-a">Nodo A</option>
+            <option value="nodo-b">Nodo B</option>
+          </select>
+        </div>
+
+        <div class="card border-light shadow-sm p-4 mb-4">
+          <h5 class="card-title mb-3">Parametros de Alerta</h5>
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <label class="form-label-custom" for="config-temp-min">Temperatura minima</label>
+              <div class="input-group-custom">
+                <input type="number" step="0.1" class="form-control-custom" id="config-temp-min">
+                <span class="input-group-text-custom">&deg;C</span>
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label-custom" for="config-temp-max">Temperatura maxima</label>
+              <div class="input-group-custom">
+                <input type="number" step="0.1" class="form-control-custom" id="config-temp-max">
+                <span class="input-group-text-custom">&deg;C</span>
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label-custom" for="config-hum-min">Humedad minima</label>
+              <div class="input-group-custom">
+                <input type="number" step="0.1" class="form-control-custom" id="config-hum-min">
+                <span class="input-group-text-custom">%</span>
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label-custom" for="config-hum-max">Humedad maxima</label>
+              <div class="input-group-custom">
+                <input type="number" step="0.1" class="form-control-custom" id="config-hum-max">
+                <span class="input-group-text-custom">%</span>
+              </div>
+            </div>
+          </div>
+          <div class="form-feedback-custom invalid-custom d-none" id="config-rango-error">
+            <i class="bi bi-exclamation-circle-fill"></i> <span></span>
+          </div>
+        </div>
+
+        <div class="card border-light shadow-sm p-4 mb-4">
+          <h5 class="card-title mb-3">Alarmas</h5>
+          <div class="form-switch-custom">
+            <input class="form-switch-input-custom" type="checkbox" id="config-buzzer-enabled">
+            <label class="form-switch-label" for="config-buzzer-enabled">Alarma sonora (buzzer)</label>
+          </div>
+          <div class="form-switch-custom">
+            <input class="form-switch-input-custom" type="checkbox" id="config-visual-alarm-enabled">
+            <label class="form-switch-label" for="config-visual-alarm-enabled">Alarma visual (LED)</label>
+          </div>
+        </div>
+
+        <div id="config-alert-area"></div>
+
+        <div class="d-flex justify-content-end">
+          <button type="button" class="btn-custom btn-custom-primary btn-custom-lg" id="config-btn-actualizar">
+            <i class="bi bi-cloud-upload-fill me-1"></i> Actualizar Parametros
+          </button>
+        </div>
+      </div>
+
+      <!-- Columna lateral: estado actual por nodo -->
+      <div class="col-12 col-xl-4">
+        <div class="card border-light shadow-sm p-4">
+          <h5 class="card-title mb-3">Ultima configuracion enviada</h5>
+          {% for node_id, cfg in node_config.items %}
+          <div class="transaction-item px-0">
+            <div class="transaction-icon bg-forest-light text-lime">
+              <i class="bi bi-cpu"></i>
+            </div>
+            <div class="transaction-info">
+              <div class="transaction-name">{{ node_id }}</div>
+              <div class="fs-xs text-muted">
+                {% if cfg.is_default %}Valores de fabrica (sin enviar todavia){% else %}{{ cfg.sent_at }}{% endif %}
+              </div>
+            </div>
+            <div class="d-flex flex-column gap-1 align-items-end fs-xs">
+              <span>{{ cfg.temp_min }}&deg;C - {{ cfg.temp_max }}&deg;C</span>
+              <span>{{ cfg.hum_min }}% - {{ cfg.hum_max }}%</span>
+              <span>
+                <i class="bi {% if cfg.buzzer_enabled %}bi-volume-up-fill text-lime{% else %}bi-volume-mute-fill text-muted{% endif %}"></i>
+                <i class="bi {% if cfg.visual_alarm_enabled %}bi-lightbulb-fill text-lime{% else %}bi-lightbulb text-muted{% endif %} ms-1"></i>
+              </span>
+            </div>
+          </div>
+          {% if not forloop.last %}<hr>{% endif %}
+          {% endfor %}
+        </div>
+      </div>
+
+    </div>
+
+    <!-- START: Modal de segunda confirmacion -->
+    <div class="modal fade" id="config-confirm-modal" tabindex="-1" aria-labelledby="config-confirm-modal-label" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="config-confirm-modal-label">Confirmar actualizacion de parametros</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="config-modal-close-btn"></button>
+          </div>
+          <div class="modal-body">
+            <p class="mb-3">Se publicara esta configuracion con <strong>retain</strong> en MQTT para: <strong id="config-confirm-target"></strong></p>
+            <ul class="mb-0" id="config-confirm-summary"></ul>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn-custom btn-custom-light" data-bs-dismiss="modal" id="config-btn-cancelar">Cancelar</button>
+            <button type="button" class="btn-custom btn-custom-primary" id="config-btn-confirmar">
+              <span class="config-btn-confirmar-content"><i class="bi bi-check-lg me-1"></i> Confirmar y Enviar</span>
+              <span class="config-btn-confirmar-loading d-none"><span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Enviando...</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- END: Modal de segunda confirmacion -->
+{% endblock %}
+
+{% block extra_js %}
+{{ node_config|json_script:"config-node-data" }}
+<script>
+  window.CONFIG_ACTUALIZAR_URL = "{% url 'configuracion_actualizar' %}";
+  window.CONFIG_ACK_LATEST_URL = "{% url 'configuracion_ack_latest' %}";
+  window.CONFIG_ACK_SINCE_INIT = {{ ack_since_ms }};
+</script>
+{% endblock %}

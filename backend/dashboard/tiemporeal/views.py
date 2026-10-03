@@ -5,6 +5,8 @@ from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_GET
 
+from configuracion.models import NodeConfigLog
+
 from .models import NodeReading, NodeStatus
 
 NODE_IDS = ["nodo-a", "nodo-b"]
@@ -142,13 +144,17 @@ def tiemporeal(request):
     else:
         x_min = x_max = None
 
+    # Umbrales realmente publicados desde Configuracion (node_config_log),
+    # no un valor fijo en el codigo - ver NodeConfigLog.latest_thresholds.
+    thresholds = NodeConfigLog.latest_thresholds("nodo-a")
+
     context = {
         "selected_hora_inicio": hora_inicio.strftime("%H:%M"),
         "selected_hora_display": f"{hora_inicio.strftime('%H:%M')} - Ahora",
-        "temp_min": 18,
-        "temp_max": 30,
-        "hum_min": 30,
-        "hum_max": 80,
+        "temp_min": thresholds["temp_min"],
+        "temp_max": thresholds["temp_max"],
+        "hum_min": thresholds["hum_min"],
+        "hum_max": thresholds["hum_max"],
         "tiemporeal_chart_data": {
             "tempSeriesA": temp_series_a,
             "tempSeriesB": temp_series_b,

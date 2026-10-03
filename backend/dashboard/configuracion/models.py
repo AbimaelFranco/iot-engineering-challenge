@@ -1,5 +1,17 @@
 from django.db import models
 
+# "Valores de fabrica" del firmware (ver tambien configuracion/views.py).
+# Se usan mientras ningun operador haya publicado todavia una configuracion
+# propia para un nodo (node_config_log vacia para ese node_id).
+DEFAULT_CONFIG = {
+    "temp_min": 18.0,
+    "temp_max": 30.0,
+    "hum_min": 30.0,
+    "hum_max": 80.0,
+    "buzzer_enabled": True,
+    "visual_alarm_enabled": True,
+}
+
 
 class NodeConfigLog(models.Model):
     """Historial de parametros de alerta/alarmas publicados por nodo.
@@ -29,3 +41,32 @@ class NodeConfigLog(models.Model):
     class Meta:
         managed = False
         db_table = "node_config_log"
+
+    @classmethod
+    def latest_thresholds(cls, node_id="nodo-a"):
+        """Ultimos umbrales de alerta (temp/hum min/max) publicados para
+        node_id, o DEFAULT_CONFIG si todavia no se publico ninguno.
+
+        Usado por historico/views.py y tiemporeal/views.py para que la
+        linea de alerta de sus graficas refleje lo que de verdad se publico
+        desde Configuracion, en vez de un valor fijo en el codigo. Los dos
+        nodos pueden en teoria tener configuraciones distintas (el topic es
+        config/<node_id>, no uno compartido), pero esas vistas grafican un
+        unico par de lineas para ambos nodos a la vez: se usa nodo-a como
+        referencia, que es consistente con que "Ambos nodos" (la opcion por
+        defecto en Configuracion) mantenga a los dos sincronizados.
+        """
+        row = (
+            cls.objects.filter(node_id=node_id)
+            .order_by("-sent_at")
+            .values("temp_min", "temp_max", "hum_min", "hum_max")
+            .first()
+        )
+        if not row:
+            return {k: DEFAULT_CONFIG[k] for k in ("temp_min", "temp_max", "hum_min", "hum_max")}
+        return {
+            "temp_min": float(row["temp_min"]),
+            "temp_max": float(row["temp_max"]),
+            "hum_min": float(row["hum_min"]),
+            "hum_max": float(row["hum_max"]),
+        }

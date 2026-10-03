@@ -5,23 +5,10 @@ from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_GET, require_POST
 
-from .models import NodeConfigLog
+from .models import DEFAULT_CONFIG, NodeConfigLog
 from .mqtt_publish import MqttPublishError, publish_node_config
 
 NODE_IDS = ["nodo-a", "nodo-b"]
-
-# "Valores de fabrica" del firmware (los mismos umbrales ya usados como
-# referencia visual en historico/views.py y tiemporeal/views.py) - se
-# muestran mientras ningun operador haya publicado todavia una configuracion
-# propia para ese nodo (node_config_log vacia).
-DEFAULT_CONFIG = {
-    "temp_min": 18.0,
-    "temp_max": 30.0,
-    "hum_min": 30.0,
-    "hum_max": 80.0,
-    "buzzer_enabled": True,
-    "visual_alarm_enabled": True,
-}
 
 # Rango fisico del sensor AHT10 (ver Documentation/Datasheet/AHT10.PDF):
 # limites fuera de este rango no tienen sentido como umbral de alerta.

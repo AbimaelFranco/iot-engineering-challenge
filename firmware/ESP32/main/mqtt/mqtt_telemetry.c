@@ -51,6 +51,16 @@
 #define MQTT_ESTATUS_QOS 1
 #define MQTT_TOPIC_CONFIG "iot-challenge/config/" NODE_ID
 #define MQTT_CONFIG_QOS 1
+#define MQTT_TOPIC_CONFIG_ACK "iot-challenge/config/" NODE_ID "/ack"
+// QoS 1 a proposito: esta confirmacion es vital para el proyecto, asi que
+// se prefiere arriesgar un duplicado ocasional (si el PUBACK tarda mas de
+// message_retransmit_timeout -1000 ms por defecto en esp-mqtt- y la
+// libreria reenvia por su cuenta, el broker entrega el ack repetido al
+// suscriptor) a arriesgar perderlo por completo con QoS0. Si algun
+// consumidor necesita exactamente una fila por ack, debe deduplicar por
+// "ts" (ver Documentation/README.md), no bajar el QoS aqui.
+#define MQTT_CONFIG_ACK_QOS 1
+#define MQTT_CONFIG_ACK_RETAIN 0
 
 static EventGroupHandle_t s_wifi_event_group;
 static int s_wifi_retry_num = 0;
@@ -76,18 +86,66 @@ typedef struct
 
 static node_config_t s_node_config = {0};
 
+// Responde en MQTT_TOPIC_CONFIG_ACK (ver formato en Documentation/README.md)
+// confirmando que se proceso un mensaje de MQTT_TOPIC_CONFIG. "ack_ts" es
+// el "ts" del mensaje que se esta confirmando (copiado tal cual, no
+// generado aqui) para que la plataforma pueda asociar este ack con el
+// mensaje especifico que lo origino; "reason" se ignora si ok=true.
+static void publish_config_ack(bool ok, double ack_ts, const char *reason)
+{
+    if (!s_mqtt_connected)
+    {
+        return;
+    }
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddNumberToObject(root, "ts", ack_ts);
+    cJSON_AddStringToObject(root, "status", ok ? "ok" : "error");
+
+    if (ok)
+    {
+        cJSON *applied = cJSON_CreateObject();
+        cJSON_AddNumberToObject(applied, "temp_min", s_node_config.temp_min);
+        cJSON_AddNumberToObject(applied, "temp_max", s_node_config.temp_max);
+        cJSON_AddNumberToObject(applied, "hum_min", s_node_config.hum_min);
+        cJSON_AddNumberToObject(applied, "hum_max", s_node_config.hum_max);
+        cJSON_AddBoolToObject(applied, "buzzer_enabled", s_node_config.buzzer_enabled);
+        cJSON_AddBoolToObject(applied, "visual_alarm_enabled", s_node_config.visual_alarm_enabled);
+        cJSON_AddItemToObject(root, "applied", applied);
+    }
+    else
+    {
+        cJSON_AddStringToObject(root, "reason", reason);
+    }
+
+    char *payload = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    if (payload == NULL)
+    {
+        return;
+    }
+
+    int msg_id = esp_mqtt_client_publish(s_mqtt_client, MQTT_TOPIC_CONFIG_ACK, payload, 0,
+                                         MQTT_CONFIG_ACK_QOS, MQTT_CONFIG_ACK_RETAIN);
+    printf("Publicado en %s (msg_id=%d): %s\n", MQTT_TOPIC_CONFIG_ACK, msg_id, payload);
+
+    free(payload);
+}
+
 // Procesa un mensaje recibido en MQTT_TOPIC_CONFIG (ver formato en
-// Documentation/README.md): lo parsea, lo guarda en s_node_config y lo
-// imprime por consola. Ignora mensajes fragmentados (data_len distinto de
-// total_data_len): el payload de config es un JSON chico que siempre cabe
-// en un solo evento con el tamano de buffer MQTT por defecto, asi que
-// fragmentarse indicaria algo inesperado y no vale la pena reensamblarlo
-// para este caso de uso.
+// Documentation/README.md): lo parsea, lo guarda en s_node_config, lo
+// imprime por consola y siempre responde en MQTT_TOPIC_CONFIG_ACK (ok o
+// error, ver publish_config_ack()). Ignora mensajes fragmentados (data_len
+// distinto de total_data_len): el payload de config es un JSON chico que
+// siempre cabe en un solo evento con el tamano de buffer MQTT por
+// defecto, asi que fragmentarse indicaria algo inesperado y no vale la
+// pena reensamblarlo para este caso de uso.
 static void handle_config_event(esp_mqtt_event_handle_t event)
 {
     if (event->data_len != event->total_data_len || event->current_data_offset != 0)
     {
         printf("Mensaje de configuracion fragmentado o incompleto, se descarta.\n");
+        publish_config_ack(false, (double)time(NULL), "fragmented");
         return;
     }
 
@@ -95,8 +153,15 @@ static void handle_config_event(esp_mqtt_event_handle_t event)
     if (root == NULL)
     {
         printf("Configuracion recibida con JSON invalido, se descarta.\n");
+        publish_config_ack(false, (double)time(NULL), "invalid_json");
         return;
     }
+
+    // Se copia tal cual en el ack (ver publish_config_ack()); si el
+    // mensaje no trae "ts" o no es numerico, se usa la hora local como
+    // mejor esfuerzo en vez de descartar el mensaje solo por eso.
+    cJSON *ts_field = cJSON_GetObjectItemCaseSensitive(root, "ts");
+    double ack_ts = cJSON_IsNumber(ts_field) ? ts_field->valuedouble : (double)time(NULL);
 
     cJSON *temp_min = cJSON_GetObjectItemCaseSensitive(root, "temp_min");
     cJSON *temp_max = cJSON_GetObjectItemCaseSensitive(root, "temp_max");
@@ -111,6 +176,7 @@ static void handle_config_event(esp_mqtt_event_handle_t event)
     {
         printf("Configuracion recibida con campos faltantes o invalidos, se descarta.\n");
         cJSON_Delete(root);
+        publish_config_ack(false, ack_ts, "invalid_fields");
         return;
     }
 
@@ -144,6 +210,8 @@ static void handle_config_event(esp_mqtt_event_handle_t event)
            s_node_config.hum_min, s_node_config.hum_max,
            s_node_config.buzzer_enabled ? "true" : "false",
            s_node_config.visual_alarm_enabled ? "true" : "false");
+
+    publish_config_ack(true, ack_ts, NULL);
 }
 
 // Maneja los eventos de WiFi/IP durante la conexión: reintenta al

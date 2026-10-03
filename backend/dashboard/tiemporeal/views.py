@@ -55,7 +55,7 @@ def _latest_status_by_node():
     for node_id in NODE_IDS:
         row = (
             NodeStatus.objects.filter(node_id=node_id)
-            .order_by("-received_at")
+            .order_by("-received_at", "-id")
             .values("state", "received_at")
             .first()
         )

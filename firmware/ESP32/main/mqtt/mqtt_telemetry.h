@@ -8,6 +8,11 @@
 // (TLS) contra HiveMQ Cloud. Parámetros de conexión del nodo (client_id,
 // keepalive, clean_session) según NODE_ID (secrets.h) y la tabla en
 // Documentation/README.md.
+// Al conectar (y en cada reconexión) tambien se suscribe a
+// iot-challenge/config/<NODE_ID> (retained, QoS1): el broker reentrega de
+// inmediato la ultima configuracion de alertas/alarmas publicada desde el
+// dashboard. De momento cada mensaje recibido solo se imprime por consola
+// (ver mqtt_telemetry.c); todavia no se usa para accionar nada.
 // Es fatal (propaga error) si falla WiFi o la inicialización del cliente
 // MQTT; si solo falla la sincronización de hora, se avisa pero se continúa.
 esp_err_t mqtt_telemetry_init(void);

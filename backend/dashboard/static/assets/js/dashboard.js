@@ -1472,16 +1472,21 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
 
+        // Inserta arriba de lo que ya hubiera (no reemplaza): el polling de
+        // acks (ver mas abajo) puede mostrar varios avisos seguidos (uno
+        // por nodo) y no deben taparse entre si. Cada uno se puede cerrar
+        // por separado con su propia "x".
         function configShowAlert(type, message) {
             if (!configAlertArea) {
                 return;
             }
-            configAlertArea.innerHTML =
-                '<div class="alert-custom alert-custom-' + type + '">' +
+            const div = document.createElement('div');
+            div.className = 'alert-custom alert-custom-' + type;
+            div.innerHTML =
                 '<i class="bi ' + (type === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill') + ' alert-custom-icon"></i>' +
                 '<div class="alert-custom-content">' + message + '</div>' +
-                '<button class="alert-custom-close" type="button" aria-label="Close" onclick="this.parentElement.remove();"><i class="bi bi-x-lg"></i></button>' +
-                '</div>';
+                '<button class="alert-custom-close" type="button" aria-label="Close" onclick="this.parentElement.remove();"><i class="bi bi-x-lg"></i></button>';
+            configAlertArea.insertBefore(div, configAlertArea.firstChild);
         }
 
         function configReadForm() {
@@ -1600,8 +1605,12 @@ document.addEventListener('DOMContentLoaded', function () {
                             configModal.hide();
                         }
                         if (result.ok && result.data.ok) {
-                            configShowAlert('success', 'Parametros publicados correctamente (retained) en MQTT.');
-                            setTimeout(function () { window.location.reload(); }, 1200);
+                            // Sin mensaje inline aqui ni recarga de pagina:
+                            // la confirmacion real (que el nodo de verdad
+                            // la recibio y aplico) llega por separado como
+                            // toast via el polling de acks de abajo, que
+                            // necesita seguir corriendo en esta misma
+                            // pagina para no perderla.
                         } else {
                             configShowAlert('danger', result.data.error || 'No se pudo publicar la configuracion.');
                         }
@@ -1618,6 +1627,102 @@ document.addEventListener('DOMContentLoaded', function () {
                         configPendingPayload = null;
                     });
             });
+        }
+
+        // -------------------------------------------------------------
+        // Configuracion Page: Polling de acks de confirmacion (config/.../ack)
+        // -------------------------------------------------------------
+        // Mismo patron de polling que Tiempo Real (tiemporealPoll() mas
+        // arriba, ver tiemporeal/views.py -> tiemporeal_latest): el
+        // navegador pregunta cada pocos segundos en vez de abrir una
+        // conexion MQTT propia. Aqui se reciclo para leer los acks que el
+        // nodo publica en config/<node_id>/ack al procesar cada mensaje
+        // de configuracion (ver configuracion_ack_latest en
+        // configuracion/views.py).
+        const configAckToastArea = document.getElementById('config-ack-toast-area');
+
+        // Toast fijo arriba de la pantalla (no el inline de configShowAlert):
+        // el ack puede llegar en cualquier momento, sin importar donde este
+        // viendo el usuario, asi que no conviene que dependa de scroll.
+        // Se queda 10s y luego se difumina (config-ack-toast-fade en
+        // main.css) antes de quitarse del DOM.
+        function configShowAckToast(type, message) {
+            if (!configAckToastArea) {
+                return;
+            }
+            const div = document.createElement('div');
+            div.className = 'alert-custom alert-custom-' + type + ' config-ack-toast';
+            div.innerHTML =
+                '<i class="bi ' + (type === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill') + ' alert-custom-icon"></i>' +
+                '<div class="alert-custom-content">' + message + '</div>' +
+                '<button class="alert-custom-close" type="button" aria-label="Close"><i class="bi bi-x-lg"></i></button>';
+
+            let dismissTimer = null;
+            function dismiss() {
+                if (dismissTimer) {
+                    clearTimeout(dismissTimer);
+                }
+                div.classList.add('config-ack-toast-fade');
+                div.addEventListener('transitionend', function () {
+                    div.remove();
+                }, { once: true });
+            }
+
+            div.querySelector('.alert-custom-close').addEventListener('click', dismiss);
+            configAckToastArea.appendChild(div);
+            dismissTimer = setTimeout(dismiss, 10000);
+        }
+
+        if (window.CONFIG_ACK_LATEST_URL) {
+            const configAckReasonLabels = {
+                invalid_json: 'JSON invalido',
+                invalid_fields: 'campos invalidos o faltantes',
+                fragmented: 'mensaje fragmentado'
+            };
+            const configAckNodeLabels = { 'nodo-a': 'Nodo A', 'nodo-b': 'Nodo B' };
+
+            let configAckSince = window.CONFIG_ACK_SINCE_INIT || 0;
+            let configAckPolling = false;
+
+            function configAckMessage(ack) {
+                const label = configAckNodeLabels[ack.node_id] || ack.node_id;
+                if (ack.status === 'ok') {
+                    if (ack.applied) {
+                        return label + ' confirmo la nueva configuracion: ' +
+                            ack.applied.temp_min + '&deg;C - ' + ack.applied.temp_max + '&deg;C, ' +
+                            ack.applied.hum_min + '% - ' + ack.applied.hum_max + '%.';
+                    }
+                    return label + ' confirmo la nueva configuracion.';
+                }
+                const reason = configAckReasonLabels[ack.reason] || ack.reason || 'motivo desconocido';
+                return label + ' no pudo aplicar la configuracion (' + reason + ').';
+            }
+
+            function configAckPoll() {
+                if (configAckPolling) {
+                    return;
+                }
+                configAckPolling = true;
+                fetch(window.CONFIG_ACK_LATEST_URL + '?since=' + configAckSince)
+                    .then(function (res) { return res.json(); })
+                    .then(function (data) {
+                        (data.acks || []).forEach(function (ack) {
+                            configShowAckToast(ack.status === 'ok' ? 'success' : 'danger', configAckMessage(ack));
+                        });
+                        if (data.lastEpochMs != null) {
+                            configAckSince = data.lastEpochMs;
+                        }
+                    })
+                    .catch(function (err) {
+                        console.error('Error consultando acks de configuracion:', err);
+                    })
+                    .finally(function () {
+                        configAckPolling = false;
+                    });
+            }
+
+            configAckPoll();
+            setInterval(configAckPoll, 5000);
         }
     }
 

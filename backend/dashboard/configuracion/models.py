@@ -70,3 +70,27 @@ class NodeConfigLog(models.Model):
             "hum_min": float(row["hum_min"]),
             "hum_max": float(row["hum_max"]),
         }
+
+
+class MqttLog(models.Model):
+    """Log crudo de todo mensaje MQTT, llenado por backend/telemetry-worker.py
+    sin importar el topic (tabla maestra, ver comentario al inicio de ese
+    archivo). Aqui se usa puntualmente para leer los acks de
+    config/<node_id>/ack (ver views.py, configuracion_ack_latest): como ese
+    topic no tiene todavia una tabla especializada propia, es mas simple
+    leerlo del log generico que agregar una columna/tabla nueva solo para
+    esto.
+
+    Tabla creada y administrada por backend/db_creator.py, no por Django
+    (managed = False).
+    """
+
+    topic = models.TextField()
+    qos = models.SmallIntegerField()
+    payload_raw = models.TextField()
+    payload_json = models.JSONField(null=True)
+    logged_at = models.DateTimeField()
+
+    class Meta:
+        managed = False
+        db_table = "mqtt_log"

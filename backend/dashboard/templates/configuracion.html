@@ -4,6 +4,12 @@
 
 {% block content %}
     {% csrf_token %}
+    <!-- Toasts de confirmacion de recepcion (config/.../ack), fijos arriba
+         de todo el contenido: el ack puede llegar en cualquier momento
+         mientras el polling corre (ver dashboard.js), sin importar en que
+         parte de la pagina este viendo el usuario. -->
+    <div id="config-ack-toast-area" class="config-ack-toast-area" aria-live="polite"></div>
+
     <!-- START: Page Header Banner -->
     <div class="page-header">
       <div>
@@ -145,5 +151,7 @@
 {{ node_config|json_script:"config-node-data" }}
 <script>
   window.CONFIG_ACTUALIZAR_URL = "{% url 'configuracion_actualizar' %}";
+  window.CONFIG_ACK_LATEST_URL = "{% url 'configuracion_ack_latest' %}";
+  window.CONFIG_ACK_SINCE_INIT = {{ ack_since_ms }};
 </script>
 {% endblock %}

@@ -1,14 +1,20 @@
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_GET, require_POST
 
-from .models import DEFAULT_CONFIG, NodeConfigLog
+from .models import DEFAULT_CONFIG, MqttLog, NodeConfigLog
 from .mqtt_publish import MqttPublishError, publish_node_config
 
 NODE_IDS = ["nodo-a", "nodo-b"]
+
+# Topics de confirmacion (ver Documentation/README.md, config/.../ack).
+# telemetry-worker.py ya los guarda en mqtt_log sin ningun cambio de su
+# parte (es el log crudo/generico, ver MqttLog); no hace falta una tabla
+# especializada para leerlos desde aqui.
+ACK_TOPICS = [f"iot-challenge/config/{node_id}/ack" for node_id in NODE_IDS]
 
 # Rango fisico del sensor AHT10 (ver Documentation/Datasheet/AHT10.PDF):
 # limites fuera de este rango no tienen sentido como umbral de alerta.
@@ -53,10 +59,78 @@ def _latest_config_by_node():
     return config
 
 
+def _to_epoch_ms(naive_dt):
+    # mqtt_log.logged_at es TIMESTAMP naive con la hora local de Guatemala
+    # ya calculada (igual que node_config_log/node_readings/etc, ver
+    # comentario identico en historico/views.py y tiemporeal/views.py).
+    # Tratarlo como UTC (sin conversion real) es lo que le permite a
+    # configuracion.js comparar este epoch con Date.now() del navegador
+    # usando la misma convencion que el resto del dashboard.
+    return int(naive_dt.replace(tzinfo=timezone.utc).timestamp() * 1000)
+
+
+def _parse_since(raw):
+    try:
+        since_ms = int(raw)
+    except (TypeError, ValueError):
+        since_ms = 0
+    if since_ms <= 0:
+        return datetime.min
+    return datetime.fromtimestamp(since_ms / 1000, tz=timezone.utc).replace(tzinfo=None)
+
+
 def configuracion(request):
     return render(request, "configuracion.html", {
         "node_config": _latest_config_by_node(),
+        # Punto de partida del polling de acks (ver configuracion_ack_latest
+        # / dashboard.js): "ahora", para no bombardear al usuario con acks
+        # viejos de configuraciones pasadas apenas abre la pagina.
+        "ack_since_ms": _to_epoch_ms(datetime.now()),
     })
+
+
+@require_GET
+def configuracion_ack_latest(request):
+    """Acks nuevos (config/.../ack) desde la ultima vez que el cliente
+    pregunto. Mismo endpoint de polling que tiemporeal_latest
+    (tiemporeal/views.py): el navegador pregunta cada pocos segundos en
+    vez de abrir una conexion MQTT propia.
+
+    Deduplica por (node_id, ts del payload): el ack usa QoS1 a proposito
+    (ver mqtt_telemetry.c) y puede llegar duplicado si el PUBACK tarda -
+    eso es correcto a nivel de protocolo, pero mostrar el mismo aviso dos
+    veces en la interfaz seria confuso, asi que aqui se queda con la
+    primera copia de cada (node_id, ts) y descarta el resto.
+    """
+    since = _parse_since(request.GET.get("since"))
+
+    rows = list(
+        MqttLog.objects.filter(topic__in=ACK_TOPICS, logged_at__gt=since)
+        .order_by("logged_at")
+        .values("topic", "payload_json", "logged_at")
+    )
+
+    seen = set()
+    acks = []
+    last_epoch_ms = None
+    for row in rows:
+        last_epoch_ms = _to_epoch_ms(row["logged_at"])
+
+        node_id = row["topic"].split("/")[-2]  # iot-challenge/config/<node_id>/ack
+        data = row["payload_json"] or {}
+        dedup_key = (node_id, data.get("ts"))
+        if dedup_key in seen:
+            continue
+        seen.add(dedup_key)
+
+        acks.append({
+            "node_id": node_id,
+            "status": data.get("status"),
+            "reason": data.get("reason"),
+            "applied": data.get("applied"),
+        })
+
+    return JsonResponse({"acks": acks, "lastEpochMs": last_epoch_ms})
 
 
 def _parse_config_payload(data):

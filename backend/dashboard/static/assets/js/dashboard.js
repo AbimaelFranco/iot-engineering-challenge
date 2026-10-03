@@ -1421,4 +1421,204 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // -----------------------------------------------------------------
+    // 7. Configuracion Page: Parametros de alerta + alarmas (MQTT retained)
+    // -----------------------------------------------------------------
+    const configNodeDataEl = document.getElementById('config-node-data');
+    if (configNodeDataEl) {
+        const configNodeData = JSON.parse(configNodeDataEl.textContent);
+
+        const configNodeTarget = document.getElementById('config-node-target');
+        const configTempMin = document.getElementById('config-temp-min');
+        const configTempMax = document.getElementById('config-temp-max');
+        const configHumMin = document.getElementById('config-hum-min');
+        const configHumMax = document.getElementById('config-hum-max');
+        const configBuzzer = document.getElementById('config-buzzer-enabled');
+        const configVisualAlarm = document.getElementById('config-visual-alarm-enabled');
+        const configRangoError = document.getElementById('config-rango-error');
+        const configAlertArea = document.getElementById('config-alert-area');
+        const configBtnActualizar = document.getElementById('config-btn-actualizar');
+        const configBtnConfirmar = document.getElementById('config-btn-confirmar');
+        const configConfirmTarget = document.getElementById('config-confirm-target');
+        const configConfirmSummary = document.getElementById('config-confirm-summary');
+        const configModalEl = document.getElementById('config-confirm-modal');
+        const configModal = (configModalEl && window.bootstrap) ? new bootstrap.Modal(configModalEl) : null;
+
+        const configNodeLabels = {
+            'nodo-a': 'Nodo A',
+            'nodo-b': 'Nodo B',
+            'ambos': 'Ambos nodos (Nodo A + Nodo B)'
+        };
+
+        // "Ambos" no tiene un estado propio: al elegirlo se parte de los
+        // valores actuales del Nodo A como punto de partida para editar.
+        function configFillForm(nodeId) {
+            const baseline = configNodeData[nodeId] || configNodeData['nodo-a'];
+            if (!baseline) {
+                return;
+            }
+            configTempMin.value = baseline.temp_min;
+            configTempMax.value = baseline.temp_max;
+            configHumMin.value = baseline.hum_min;
+            configHumMax.value = baseline.hum_max;
+            configBuzzer.checked = !!baseline.buzzer_enabled;
+            configVisualAlarm.checked = !!baseline.visual_alarm_enabled;
+        }
+
+        if (configNodeTarget) {
+            configFillForm(configNodeTarget.value);
+            configNodeTarget.addEventListener('change', function () {
+                configFillForm(configNodeTarget.value);
+            });
+        }
+
+        function configShowAlert(type, message) {
+            if (!configAlertArea) {
+                return;
+            }
+            configAlertArea.innerHTML =
+                '<div class="alert-custom alert-custom-' + type + '">' +
+                '<i class="bi ' + (type === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill') + ' alert-custom-icon"></i>' +
+                '<div class="alert-custom-content">' + message + '</div>' +
+                '<button class="alert-custom-close" type="button" aria-label="Close" onclick="this.parentElement.remove();"><i class="bi bi-x-lg"></i></button>' +
+                '</div>';
+        }
+
+        function configReadForm() {
+            return {
+                node_target: configNodeTarget.value,
+                temp_min: parseFloat(configTempMin.value),
+                temp_max: parseFloat(configTempMax.value),
+                hum_min: parseFloat(configHumMin.value),
+                hum_max: parseFloat(configHumMax.value),
+                buzzer_enabled: configBuzzer.checked,
+                visual_alarm_enabled: configVisualAlarm.checked
+            };
+        }
+
+        function configValidate(payload) {
+            if ([payload.temp_min, payload.temp_max, payload.hum_min, payload.hum_max].some(isNaN)) {
+                return 'Todos los limites deben ser numericos.';
+            }
+            if (payload.temp_min >= payload.temp_max) {
+                return 'La temperatura minima debe ser menor que la maxima.';
+            }
+            if (payload.hum_min >= payload.hum_max) {
+                return 'La humedad minima debe ser menor que la maxima.';
+            }
+            return null;
+        }
+
+        let configPendingPayload = null;
+
+        if (configBtnActualizar) {
+            configBtnActualizar.addEventListener('click', function () {
+                const payload = configReadForm();
+                const errorMsg = configValidate(payload);
+                if (configRangoError) {
+                    configRangoError.classList.toggle('d-none', !errorMsg);
+                    if (errorMsg) {
+                        configRangoError.querySelector('span').textContent = errorMsg;
+                    }
+                }
+                if (errorMsg) {
+                    return;
+                }
+
+                configPendingPayload = payload;
+                if (configConfirmTarget) {
+                    configConfirmTarget.textContent = configNodeLabels[payload.node_target] || payload.node_target;
+                }
+                if (configConfirmSummary) {
+                    configConfirmSummary.innerHTML =
+                        '<li>Temperatura: ' + payload.temp_min + '&deg;C - ' + payload.temp_max + '&deg;C</li>' +
+                        '<li>Humedad: ' + payload.hum_min + '% - ' + payload.hum_max + '%</li>' +
+                        '<li>Alarma sonora: ' + (payload.buzzer_enabled ? 'Activada' : 'Desactivada') + '</li>' +
+                        '<li>Alarma visual: ' + (payload.visual_alarm_enabled ? 'Activada' : 'Desactivada') + '</li>';
+                }
+
+                if (configModal) {
+                    configModal.show();
+                }
+            });
+        }
+
+        function configGetCsrfToken() {
+            const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+            return match ? decodeURIComponent(match[1]) : '';
+        }
+
+        // Feedback visual de "en vuelo": la publicacion MQTT puede tardar
+        // varios segundos (hasta el timeout de PUBLISH_ACK_TIMEOUT_S en
+        // mqtt_publish.py si el broker no confirma), asi que sin esto el
+        // usuario no tenia forma de saber si el click si se registro.
+        // Cancelar/cerrar se deshabilitan mientras tanto (y el modal usa
+        // backdrop estatico) para que no se pueda abandonar el dialogo a
+        // mitad de un envio que ya esta en curso del lado del servidor.
+        const configBtnConfirmarContent = configBtnConfirmar ? configBtnConfirmar.querySelector('.config-btn-confirmar-content') : null;
+        const configBtnConfirmarLoading = configBtnConfirmar ? configBtnConfirmar.querySelector('.config-btn-confirmar-loading') : null;
+        const configBtnCancelar = document.getElementById('config-btn-cancelar');
+        const configModalCloseBtn = document.getElementById('config-modal-close-btn');
+
+        function configSetSending(isSending) {
+            if (configBtnConfirmar) {
+                configBtnConfirmar.disabled = isSending;
+            }
+            if (configBtnConfirmarContent) {
+                configBtnConfirmarContent.classList.toggle('d-none', isSending);
+            }
+            if (configBtnConfirmarLoading) {
+                configBtnConfirmarLoading.classList.toggle('d-none', !isSending);
+            }
+            if (configBtnCancelar) {
+                configBtnCancelar.disabled = isSending;
+            }
+            if (configModalCloseBtn) {
+                configModalCloseBtn.disabled = isSending;
+            }
+        }
+
+        if (configBtnConfirmar) {
+            configBtnConfirmar.addEventListener('click', function () {
+                if (!configPendingPayload) {
+                    return;
+                }
+                configSetSending(true);
+                fetch(window.CONFIG_ACTUALIZAR_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': configGetCsrfToken()
+                    },
+                    body: JSON.stringify(configPendingPayload)
+                })
+                    .then(function (res) {
+                        return res.json().then(function (data) { return { ok: res.ok, data: data }; });
+                    })
+                    .then(function (result) {
+                        if (configModal) {
+                            configModal.hide();
+                        }
+                        if (result.ok && result.data.ok) {
+                            configShowAlert('success', 'Parametros publicados correctamente (retained) en MQTT.');
+                            setTimeout(function () { window.location.reload(); }, 1200);
+                        } else {
+                            configShowAlert('danger', result.data.error || 'No se pudo publicar la configuracion.');
+                        }
+                    })
+                    .catch(function (err) {
+                        if (configModal) {
+                            configModal.hide();
+                        }
+                        configShowAlert('danger', 'Error de red al publicar la configuracion.');
+                        console.error('Error publicando configuracion:', err);
+                    })
+                    .finally(function () {
+                        configSetSending(false);
+                        configPendingPayload = null;
+                    });
+            });
+        }
+    }
+
 });

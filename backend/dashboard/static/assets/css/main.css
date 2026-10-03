@@ -3326,5 +3326,36 @@ span.flatpickr-weekday {
     color: var(--brand-lime) !important;
 }
 
+/* ---------------------------------------------------------------------
+   9. Modal (segunda confirmacion, ver configuracion.html)
+--------------------------------------------------------------------- */
+.modal-content {
+    background-color: var(--card-background);
+    border: none;
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
+}
+
+.modal-header,
+.modal-footer {
+    border-color: var(--border-light);
+}
+
+.modal-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.modal-body ul {
+    padding-left: 1.1rem;
+}
+
+.modal-body li {
+    font-size: 0.875rem;
+    color: var(--text-main);
+    margin-bottom: 0.35rem;
+}
+
 
 

@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'home',
     'historico',
     'tiemporeal',
+    'configuracion',
 ]
 
 MIDDLEWARE = [
@@ -94,6 +95,17 @@ if not DATABASE_URL:
     raise RuntimeError(
         "DATABASE_URL no esta definida. Copia .env.example a .env y completa los valores."
     )
+
+# MQTT (broker HiveMQ, ver backend/.env.example para la plantilla completa).
+# El dashboard solo PUBLICA retained a traves de la vista de Configuracion
+# (ver configuracion/mqtt_publish.py, topic config/<node_id> documentado en
+# Documentation/README.md); nunca se suscribe ni mueve credenciales al
+# navegador.
+MQTT_HOST = os.environ.get("MQTT_HOST", "")
+MQTT_PORT = int(os.environ.get("MQTT_PORT", "8883"))
+MQTT_USERNAME = os.environ.get("MQTT_USERNAME", "")
+MQTT_PASSWORD = os.environ.get("MQTT_PASSWORD", "")
+MQTT_CLIENT_ID = os.environ.get("MQTT_CLIENT_ID", "dashboard_config_publisher")
 
 _db_url = urlparse(DATABASE_URL)
 

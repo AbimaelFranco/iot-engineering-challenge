@@ -22,4 +22,5 @@ urlpatterns = [
     path('', include('home.urls')),
     path('historico/', include('historico.urls')),
     path('tiempo-real/', include('tiemporeal.urls')),
+    path('configuracion/', include('configuracion.urls')),
 ]

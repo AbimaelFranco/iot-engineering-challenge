@@ -101,6 +101,31 @@ CREATE INDEX IF NOT EXISTS idx_node_readings_node_time
     ON node_readings (node_id, reading_time DESC);
 """
 
+# ---- node_config_log: historial de parametros de alerta/alarmas enviados ----
+# Topic: config/<node_id> (plataforma -> nodo, QoS 1, retained). A diferencia
+# de node_commands (llenada por telemetry-worker.py al VER el mensaje pasar
+# por el broker), esta tabla la llena directamente la vista de Configuracion
+# del dashboard (backend/dashboard/configuracion/views.py) en el mismo
+# request que publica el mensaje retained, porque el dashboard es aqui el
+# publicador, no un suscriptor.
+CREATE_NODE_CONFIG_LOG_SQL = f"""
+CREATE TABLE IF NOT EXISTS node_config_log (
+    id                    BIGSERIAL PRIMARY KEY,
+    node_id               TEXT NOT NULL,
+    temp_min              NUMERIC(6,2) NOT NULL,
+    temp_max              NUMERIC(6,2) NOT NULL,
+    hum_min               NUMERIC(6,2) NOT NULL,
+    hum_max               NUMERIC(6,2) NOT NULL,
+    buzzer_enabled        BOOLEAN NOT NULL,
+    visual_alarm_enabled  BOOLEAN NOT NULL,
+    topic                 TEXT NOT NULL,
+    payload_raw           TEXT NOT NULL,
+    sent_at               TIMESTAMP(0) NOT NULL DEFAULT {_NOW_LOCAL}
+);
+CREATE INDEX IF NOT EXISTS idx_node_config_log_node_sent
+    ON node_config_log (node_id, sent_at DESC);
+"""
+
 # Agregar aqui futuras tablas segun se vayan necesitando, cada una en su
 # propia constante CREATE_..._SQL.
 
@@ -109,6 +134,7 @@ TABLES = [
     ("node_status_log", CREATE_NODE_STATUS_LOG_SQL),
     ("node_commands", CREATE_NODE_COMMANDS_SQL),
     ("node_readings", CREATE_NODE_READINGS_SQL),
+    ("node_config_log", CREATE_NODE_CONFIG_LOG_SQL),
 ]
 
 # Migraciones sobre tablas/columnas que ya pudieron existir de una version

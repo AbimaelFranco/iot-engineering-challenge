@@ -19,7 +19,13 @@ from dotenv import load_dotenv
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-load_dotenv(BASE_DIR / ".env")
+# override=True: sin esto, python-dotenv no pisa una variable que ya este
+# en el entorno del proceso. Con el autoreload de "runserver" (que reexec'ea
+# el proceso pero le hereda el mismo os.environ, no uno nuevo del shell), un
+# .env editado mientras el server seguia corriendo se quedaba sin aplicar
+# nunca -> caso real: MQTT_USERNAME quedo pegado al valor viejo (sin permiso
+# de Publish) varios reinicios despues de haberlo corregido en el archivo.
+load_dotenv(BASE_DIR / ".env", override=True)
 
 
 # Quick-start development settings - unsuitable for production

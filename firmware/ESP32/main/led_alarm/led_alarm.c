@@ -1,9 +1,11 @@
 /*
- * Senal visual de alarma: LED integrado en GPIO2, parpadeando mientras
- * "visual_alarm_enabled" (configuracion recibida por MQTT, ver
- * mqtt/mqtt_telemetry.c) este activo. Corre en su propia tarea FreeRTOS
- * para no interferir con el loop principal de lectura del sensor
- * (ESP32.c) ni con el cliente MQTT.
+ * Control generico del LED integrado en GPIO2: parpadea con el tiempo en
+ * alto/bajo que indique el caller (ver led_alarm_set_enabled()). Hoy lo
+ * usa mqtt/mqtt_telemetry.c para la alarma visual (segun
+ * "visual_alarm_enabled" recibido por MQTT), pero el modulo no conoce esa
+ * semantica: solo sabe parpadear o quedarse apagado. Corre en su propia
+ * tarea FreeRTOS para no interferir con el loop principal de lectura del
+ * sensor (ESP32.c) ni con el cliente MQTT.
  */
 
 #include <stdio.h>
@@ -15,15 +17,18 @@
 #include "led_alarm.h"
 
 #define LED_GPIO GPIO_NUM_2
-#define LED_ON_MS 1000
-#define LED_OFF_MS 3000
 #define LED_IDLE_POLL_MS 200
 
 static volatile bool s_enabled = false;
+static volatile uint32_t s_on_ms = 0;
+static volatile uint32_t s_off_ms = 0;
 
-// Ciclo apagado/encendido mientras s_enabled este activo; revisa el flag
-// antes y despues de cada tramo para que deshabilitar la alarma corte el
-// parpadeo lo antes posible en vez de esperar un ciclo completo.
+// Ciclo apagado/encendido mientras s_enabled este activo, con los tiempos
+// vigentes al momento de cada tramo (s_on_ms/s_off_ms pueden cambiar entre
+// un tramo y otro si el caller llama led_alarm_set_enabled() de nuevo).
+// Revisa el flag antes y despues de cada tramo para que deshabilitar la
+// alarma corte el parpadeo lo antes posible en vez de esperar un ciclo
+// completo.
 static void led_alarm_task(void *arg)
 {
     (void)arg;
@@ -38,14 +43,14 @@ static void led_alarm_task(void *arg)
         }
 
         gpio_set_level(LED_GPIO, 0);
-        vTaskDelay(pdMS_TO_TICKS(LED_OFF_MS));
+        vTaskDelay(pdMS_TO_TICKS(s_off_ms));
         if (!s_enabled)
         {
             continue;
         }
 
         gpio_set_level(LED_GPIO, 1);
-        vTaskDelay(pdMS_TO_TICKS(LED_ON_MS));
+        vTaskDelay(pdMS_TO_TICKS(s_on_ms));
     }
 }
 
@@ -61,7 +66,7 @@ esp_err_t led_alarm_init(void)
     esp_err_t err = gpio_config(&io_conf);
     if (err != ESP_OK)
     {
-        printf("ERROR configurando GPIO%d para la alarma visual: %s\n", LED_GPIO, esp_err_to_name(err));
+        printf("ERROR configurando GPIO%d como salida: %s\n", LED_GPIO, esp_err_to_name(err));
         return err;
     }
     gpio_set_level(LED_GPIO, 0);
@@ -69,18 +74,21 @@ esp_err_t led_alarm_init(void)
     BaseType_t ok = xTaskCreate(led_alarm_task, "led_alarm", 2048, NULL, tskIDLE_PRIORITY + 1, NULL);
     if (ok != pdPASS)
     {
-        printf("ERROR creando la tarea de alarma visual\n");
+        printf("ERROR creando la tarea de parpadeo del LED\n");
         return ESP_FAIL;
     }
 
     return ESP_OK;
 }
 
-void led_alarm_set_enabled(bool enabled)
+void led_alarm_set_enabled(bool enabled, uint32_t on_ms, uint32_t off_ms)
 {
-    if (enabled != s_enabled)
+    if (enabled != s_enabled || on_ms != s_on_ms || off_ms != s_off_ms)
     {
-        printf("Alarma visual (GPIO%d): %s\n", LED_GPIO, enabled ? "activada" : "desactivada");
+        printf("LED GPIO%d: %s (on=%ums, off=%ums)\n", LED_GPIO,
+               enabled ? "activado" : "desactivado", (unsigned)on_ms, (unsigned)off_ms);
     }
+    s_on_ms = on_ms;
+    s_off_ms = off_ms;
     s_enabled = enabled;
 }

@@ -8,12 +8,20 @@
 #include "secrets.h"
 #include "aht10/aht10_sensor.h"
 #include "mqtt/mqtt_telemetry.h"
+#include "led_alarm/led_alarm.h"
 
 #define READ_PERIOD_MS 60000
 
 void app_main(void)
 {
     printf("\n=== " NODE_ID " - AHT10 + MQTT ===\n\n");
+
+    // No es fatal si falla: seguimos sin señal visual de alarma, pero el
+    // resto del nodo (telemetría/MQTT) no depende de esto.
+    if (led_alarm_init() != ESP_OK)
+    {
+        printf("No se pudo inicializar la alarma visual (GPIO2), se continua sin ella.\n");
+    }
 
     // Sin WiFi/MQTT no hay forma de publicar telemetría: si falla, se aborta.
     if (mqtt_telemetry_init() != ESP_OK)

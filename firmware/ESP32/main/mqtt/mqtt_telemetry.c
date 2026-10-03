@@ -29,6 +29,7 @@
 
 #include "secrets.h"
 #include "mqtt_telemetry.h"
+#include "led_alarm/led_alarm.h"
 
 // WiFi: bits del event group usados para esperar el resultado de conexión
 #define WIFI_CONNECTED_BIT BIT0
@@ -57,8 +58,9 @@ static esp_mqtt_client_handle_t s_mqtt_client = NULL;
 static volatile bool s_mqtt_connected = false;
 
 // Ultima configuracion de alertas/alarmas recibida en MQTT_TOPIC_CONFIG.
-// Se guarda para uso futuro (accionar buzzer/LED segun estos umbrales);
-// de momento solo se imprime al recibirla (ver handle_config_event()).
+// visual_alarm_enabled ya se usa para controlar el parpadeo del LED (ver
+// led_alarm.h); el resto (umbrales, buzzer_enabled) se guarda para uso
+// futuro y de momento solo se imprime (ver handle_config_event()).
 typedef struct
 {
     bool valida;
@@ -119,6 +121,8 @@ static void handle_config_event(esp_mqtt_event_handle_t event)
     s_node_config.visual_alarm_enabled = cJSON_IsTrue(visual_alarm_enabled);
 
     cJSON_Delete(root);
+
+    led_alarm_set_enabled(s_node_config.visual_alarm_enabled);
 
     printf("Configuracion recibida en %s (retained=%d): temp_min=%.1f temp_max=%.1f "
            "hum_min=%.1f hum_max=%.1f buzzer_enabled=%s visual_alarm_enabled=%s\n",

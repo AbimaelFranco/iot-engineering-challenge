@@ -124,6 +124,13 @@ static void handle_config_event(esp_mqtt_event_handle_t event)
 
     cJSON_Delete(root);
 
+    // Confirmacion de recepcion: 2 pulsos rapidos (100ms) en LED y buzzer,
+    // sin importar si las alarmas estan habilitadas o no. Interrumpe de
+    // inmediato el patron de fondo vigente y, al terminar, los dos set_*
+    // de abajo retoman (o cambian) ese patron de fondo.
+    led_alarm_pulse(2, 100, 100);
+    buzzer_pulse(2, 100, 100);
+
     // 1000/3000 ms (1s encendido/sonando, 3s apagado/silencio): cadencia
     // de las alarmas visual y sonora, decidida aqui (led_alarm/buzzer no
     // conocen esta semantica).

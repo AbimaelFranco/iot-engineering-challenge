@@ -16,8 +16,14 @@ esp_err_t buzzer_init(void);
 // ni de MQTT); quien llama decide el significado de cada patron, por
 // ejemplo mqtt/mqtt_telemetry.c usando (1000, 3000) para la alarma sonora
 // segun "buzzer_enabled" (topic iot-challenge/config/<NODE_ID>).
-// Al deshabilitar, el buzzer se apaga en el siguiente ciclo (hasta off_ms
-// de latencia) en vez de cortarse a la mitad de un tramo. Llamar de nuevo
-// con otros on_ms/off_ms mientras esta habilitado cambia la cadencia
-// vigente para el siguiente tramo.
+// El cambio aplica de inmediato (interrumpe el tramo en curso, por largo
+// que sea) en vez de esperar a que termine el ciclo vigente.
 void buzzer_set_enabled(bool enabled, uint32_t on_ms, uint32_t off_ms);
+
+// Hace una tanda de "count" pulsos rapidos (on_ms sonando, off_ms en
+// silencio cada uno) e interrumpe de inmediato el patron de fondo vigente
+// (el de la ultima llamada a buzzer_set_enabled()) para hacerlo; al
+// terminar, retoma ese patron de fondo tal cual estaba, sin alterarlo.
+// Pensado para una confirmacion puntual (p.ej. "mensaje de configuracion
+// recibido"), no para la alarma continua - ver buzzer_set_enabled().
+void buzzer_pulse(uint8_t count, uint32_t on_ms, uint32_t off_ms);

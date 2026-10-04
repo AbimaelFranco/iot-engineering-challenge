@@ -1064,6 +1064,29 @@ body.sidebar-minimized .sidebar-profile {
     line-height: 1.25;
 }
 
+/* Variante de .historico-alert-col-value cuando nodo-a y nodo-b tienen
+   umbrales distintos: una linea compacta por nodo en vez de un solo
+   valor grande (ver tiemporeal.html, tarjeta "Parametros de Alerta"). */
+.historico-alert-col-value-split {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.historico-alert-node-value {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-main);
+    line-height: 1.25;
+}
+
+.historico-alert-node-tag {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-muted-green);
+    margin-right: 0.35rem;
+}
+
 /* ---------------------------------------------------------------------
    9. Custom List (Transaction List Table replacement)
 --------------------------------------------------------------------- */

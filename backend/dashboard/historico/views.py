@@ -152,7 +152,14 @@ def historico(request):
 
     # Umbrales realmente publicados desde Configuracion (node_config_log),
     # no un valor fijo en el codigo - ver NodeConfigLog.latest_thresholds.
-    thresholds = NodeConfigLog.latest_thresholds("nodo-a")
+    # Se piden los de nodo-a y nodo-b por separado (en vez de asumir que
+    # son el mismo) porque la tarjeta "Parametros de Alerta" y el
+    # sombreado de la grafica deben poder distinguir cuando las
+    # configuraciones de ambos nodos difieren (ver historico.html y la
+    # seccion "Historico" de dashboard.js; mismo criterio que
+    # tiemporeal/views.py).
+    thresholds_a = NodeConfigLog.latest_thresholds("nodo-a")
+    thresholds_b = NodeConfigLog.latest_thresholds("nodo-b")
 
     context = {
         "selected_date": selected_date.strftime("%Y-%m-%d"),
@@ -160,13 +167,21 @@ def historico(request):
         "selected_hora_inicio": hora_inicio.strftime("%H:%M"),
         "selected_hora_fin": hora_fin.strftime("%H:%M"),
         "selected_hora_display": f"{hora_inicio.strftime('%H:%M')} - {hora_fin.strftime('%H:%M')}",
-        "temp_min": thresholds["temp_min"],
-        "temp_max": thresholds["temp_max"],
+        "temp_min_a": thresholds_a["temp_min"],
+        "temp_max_a": thresholds_a["temp_max"],
+        "temp_min_b": thresholds_b["temp_min"],
+        "temp_max_b": thresholds_b["temp_max"],
+        "temp_thresholds_match": (thresholds_a["temp_min"], thresholds_a["temp_max"])
+        == (thresholds_b["temp_min"], thresholds_b["temp_max"]),
         "temp_avg": temp_stats_all["promedio"],
         "temp_avg_a": temp_stats_a["promedio"],
         "temp_avg_b": temp_stats_b["promedio"],
-        "hum_min": thresholds["hum_min"],
-        "hum_max": thresholds["hum_max"],
+        "hum_min_a": thresholds_a["hum_min"],
+        "hum_max_a": thresholds_a["hum_max"],
+        "hum_min_b": thresholds_b["hum_min"],
+        "hum_max_b": thresholds_b["hum_max"],
+        "hum_thresholds_match": (thresholds_a["hum_min"], thresholds_a["hum_max"])
+        == (thresholds_b["hum_min"], thresholds_b["hum_max"]),
         "hum_avg": hum_stats_all["promedio"],
         "hum_avg_a": hum_stats_a["promedio"],
         "hum_avg_b": hum_stats_b["promedio"],

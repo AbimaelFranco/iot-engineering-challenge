@@ -156,7 +156,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // -----------------------------------------------------------------
     const historicoPrimaryEl = document.querySelector('#historico-primary-chart');
     if (historicoPrimaryEl) {
-        const temp = window.HISTORICO_THRESHOLDS || { tempMin: 18, tempMax: 30 };
+        const temp = window.HISTORICO_THRESHOLDS || { tempMinA: 18, tempMaxA: 30, tempMinB: 18, tempMaxB: 30 };
         const dataEl = document.querySelector('#historico-chart-data');
         const chartData = dataEl ? JSON.parse(dataEl.textContent) : {};
 
@@ -281,52 +281,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 theme: 'dark'
             },
             annotations: {
-                yaxis: [
-                    {
-                        y: temp.tempMax,
-                        y2: temp.tempMax + 100,
-                        fillColor: 'url(#dangerHatch)',
-                        opacity: 0.5,
-                        borderColor: 'transparent'
-                    },
-                    {
-                        y: temp.tempMin - 100,
-                        y2: temp.tempMin,
-                        fillColor: 'url(#dangerHatch)',
-                        opacity: 0.5,
-                        borderColor: 'transparent'
-                    },
-                    {
-                        y: temp.tempMax,
-                        borderColor: '#EF4444',
-                        strokeDashArray: 4,
-                        label: {
-                            text: 'Max ' + temp.tempMax + '°C',
-                            position: 'left',
-                            offsetX: 40,
-                            style: {
-                                color: '#FFFFFF',
-                                background: '#EF4444',
-                                fontSize: '10px'
-                            }
-                        }
-                    },
-                    {
-                        y: temp.tempMin,
-                        borderColor: '#EF4444',
-                        strokeDashArray: 4,
-                        label: {
-                            text: 'Min ' + temp.tempMin + '°C',
-                            position: 'left',
-                            offsetX: 40,
-                            style: {
-                                color: '#FFFFFF',
-                                background: '#EF4444',
-                                fontSize: '10px'
-                            }
-                        }
-                    }
-                ]
+                yaxis: buildThresholdAnnotations(temp.tempMinA, temp.tempMaxA, temp.tempMinB, temp.tempMaxB, '°C')
             }
         };
 
@@ -339,7 +294,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // -----------------------------------------------------------------
     const historicoSecondaryEl = document.querySelector('#historico-secondary-chart');
     if (historicoSecondaryEl) {
-        const hum = window.HISTORICO_THRESHOLDS || { humMin: 30, humMax: 70 };
+        const hum = window.HISTORICO_THRESHOLDS || { humMinA: 30, humMaxA: 70, humMinB: 30, humMaxB: 70 };
         const dataEl = document.querySelector('#historico-chart-data');
         const chartData = dataEl ? JSON.parse(dataEl.textContent) : {};
 
@@ -453,57 +408,108 @@ document.addEventListener('DOMContentLoaded', function () {
                 theme: 'dark'
             },
             annotations: {
-                yaxis: [
-                    {
-                        y: hum.humMax,
-                        y2: hum.humMax + 100,
-                        fillColor: 'url(#dangerHatch)',
-                        opacity: 0.5,
-                        borderColor: 'transparent'
-                    },
-                    {
-                        y: hum.humMin - 100,
-                        y2: hum.humMin,
-                        fillColor: 'url(#dangerHatch)',
-                        opacity: 0.5,
-                        borderColor: 'transparent'
-                    },
-                    {
-                        y: hum.humMax,
-                        borderColor: '#EF4444',
-                        strokeDashArray: 4,
-                        label: {
-                            text: 'Max ' + hum.humMax + '%',
-                            position: 'left',
-                            offsetX: 40,
-                            style: {
-                                color: '#FFFFFF',
-                                background: '#EF4444',
-                                fontSize: '10px'
-                            }
-                        }
-                    },
-                    {
-                        y: hum.humMin,
-                        borderColor: '#EF4444',
-                        strokeDashArray: 4,
-                        label: {
-                            text: 'Min ' + hum.humMin + '%',
-                            position: 'left',
-                            offsetX: 40,
-                            style: {
-                                color: '#FFFFFF',
-                                background: '#EF4444',
-                                fontSize: '10px'
-                            }
-                        }
-                    }
-                ]
+                yaxis: buildThresholdAnnotations(hum.humMinA, hum.humMaxA, hum.humMinB, hum.humMaxB, '%')
             }
         };
 
         const historicoSecondaryChart = new ApexCharts(historicoSecondaryEl, historicoSecondaryOptions);
         historicoSecondaryChart.render();
+    }
+
+    // Construye las anotaciones yaxis de umbral (zona rayada + linea) para
+    // un chart de Historico o Tiempo Real, a partir de los limites de
+    // nodo-a y nodo-b. Si ambos nodos comparten el mismo limite de un lado
+    // (max o min), ese lado se dibuja como antes: una sola zona rayada +
+    // una sola linea punteada. Si difieren, el lado se resuelve asi:
+    //   - Se raya el limite que ocupa mas area VISIBLE dentro del grafico:
+    //     para el maximo, el valor mas chico (su zona rayada arranca mas
+    //     abajo y cubre mas); para el minimo, el valor mas grande (su zona
+    //     rayada llega mas arriba). El rayado del limite mas restrictivo ya
+    //     cubre visualmente la zona del otro nodo.
+    //   - El otro limite (el menos restrictivo, "contenido" dentro de la
+    //     zona ya rayada) se marca solo con una linea solida continua
+    //     (strokeDashArray: 0, sin zona rayada propia) para no duplicar el
+    //     rayado, etiquetada con su nodo para no confundirla con la rayada.
+    // unit es el sufijo del label ("°C" o "%").
+    function buildThresholdAnnotations(minA, maxA, minB, maxB, unit) {
+        const labelStyle = { color: '#FFFFFF', background: '#EF4444', fontSize: '10px' };
+        const annotations = [];
+
+        const sameMax = maxA === maxB;
+        const shadedMax = sameMax ? maxA : Math.min(maxA, maxB);
+        const soloMaxIsA = maxA > maxB;
+        const soloMaxValue = soloMaxIsA ? maxA : maxB;
+
+        annotations.push({
+            y: shadedMax,
+            y2: shadedMax + 100,
+            fillColor: 'url(#dangerHatch)',
+            opacity: 0.5,
+            borderColor: 'transparent'
+        });
+        annotations.push({
+            y: shadedMax,
+            borderColor: '#EF4444',
+            strokeDashArray: 4,
+            label: {
+                text: 'Max ' + (sameMax ? '' : (maxA <= maxB ? 'A ' : 'B ')) + shadedMax + unit,
+                position: 'left',
+                offsetX: 40,
+                style: labelStyle
+            }
+        });
+        if (!sameMax) {
+            annotations.push({
+                y: soloMaxValue,
+                borderColor: '#EF4444',
+                strokeDashArray: 0,
+                label: {
+                    text: 'Max ' + (soloMaxIsA ? 'A ' : 'B ') + soloMaxValue + unit,
+                    position: 'left',
+                    offsetX: 40,
+                    style: labelStyle
+                }
+            });
+        }
+
+        const sameMin = minA === minB;
+        const shadedMin = sameMin ? minA : Math.max(minA, minB);
+        const soloMinIsA = minA < minB;
+        const soloMinValue = soloMinIsA ? minA : minB;
+
+        annotations.push({
+            y: shadedMin - 100,
+            y2: shadedMin,
+            fillColor: 'url(#dangerHatch)',
+            opacity: 0.5,
+            borderColor: 'transparent'
+        });
+        annotations.push({
+            y: shadedMin,
+            borderColor: '#EF4444',
+            strokeDashArray: 4,
+            label: {
+                text: 'Min ' + (sameMin ? '' : (minA >= minB ? 'A ' : 'B ')) + shadedMin + unit,
+                position: 'left',
+                offsetX: 40,
+                style: labelStyle
+            }
+        });
+        if (!sameMin) {
+            annotations.push({
+                y: soloMinValue,
+                borderColor: '#EF4444',
+                strokeDashArray: 0,
+                label: {
+                    text: 'Min ' + (soloMinIsA ? 'A ' : 'B ') + soloMinValue + unit,
+                    position: 'left',
+                    offsetX: 40,
+                    style: labelStyle
+                }
+            });
+        }
+
+        return annotations;
     }
 
     // -----------------------------------------------------------------
@@ -519,7 +525,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const tiemporealPrimaryEl = document.querySelector('#tiemporeal-primary-chart');
     if (tiemporealPrimaryEl) {
-        const temp = window.TIEMPOREAL_THRESHOLDS || { tempMin: 18, tempMax: 30 };
+        const temp = window.TIEMPOREAL_THRESHOLDS || { tempMinA: 18, tempMaxA: 30, tempMinB: 18, tempMaxB: 30 };
         const chartData = tiemporealChartData;
 
         const tiemporealPrimaryOptions = {
@@ -643,52 +649,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 theme: 'dark'
             },
             annotations: {
-                yaxis: [
-                    {
-                        y: temp.tempMax,
-                        y2: temp.tempMax + 100,
-                        fillColor: 'url(#dangerHatch)',
-                        opacity: 0.5,
-                        borderColor: 'transparent'
-                    },
-                    {
-                        y: temp.tempMin - 100,
-                        y2: temp.tempMin,
-                        fillColor: 'url(#dangerHatch)',
-                        opacity: 0.5,
-                        borderColor: 'transparent'
-                    },
-                    {
-                        y: temp.tempMax,
-                        borderColor: '#EF4444',
-                        strokeDashArray: 4,
-                        label: {
-                            text: 'Max ' + temp.tempMax + '°C',
-                            position: 'left',
-                            offsetX: 40,
-                            style: {
-                                color: '#FFFFFF',
-                                background: '#EF4444',
-                                fontSize: '10px'
-                            }
-                        }
-                    },
-                    {
-                        y: temp.tempMin,
-                        borderColor: '#EF4444',
-                        strokeDashArray: 4,
-                        label: {
-                            text: 'Min ' + temp.tempMin + '°C',
-                            position: 'left',
-                            offsetX: 40,
-                            style: {
-                                color: '#FFFFFF',
-                                background: '#EF4444',
-                                fontSize: '10px'
-                            }
-                        }
-                    }
-                ]
+                yaxis: buildThresholdAnnotations(temp.tempMinA, temp.tempMaxA, temp.tempMinB, temp.tempMaxB, '°C')
             }
         };
 
@@ -701,7 +662,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // -----------------------------------------------------------------
     const tiemporealSecondaryEl = document.querySelector('#tiemporeal-secondary-chart');
     if (tiemporealSecondaryEl) {
-        const hum = window.TIEMPOREAL_THRESHOLDS || { humMin: 30, humMax: 70 };
+        const hum = window.TIEMPOREAL_THRESHOLDS || { humMinA: 30, humMaxA: 70, humMinB: 30, humMaxB: 70 };
         const chartData = tiemporealChartData;
 
         const tiemporealSecondaryOptions = {
@@ -814,52 +775,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 theme: 'dark'
             },
             annotations: {
-                yaxis: [
-                    {
-                        y: hum.humMax,
-                        y2: hum.humMax + 100,
-                        fillColor: 'url(#dangerHatch)',
-                        opacity: 0.5,
-                        borderColor: 'transparent'
-                    },
-                    {
-                        y: hum.humMin - 100,
-                        y2: hum.humMin,
-                        fillColor: 'url(#dangerHatch)',
-                        opacity: 0.5,
-                        borderColor: 'transparent'
-                    },
-                    {
-                        y: hum.humMax,
-                        borderColor: '#EF4444',
-                        strokeDashArray: 4,
-                        label: {
-                            text: 'Max ' + hum.humMax + '%',
-                            position: 'left',
-                            offsetX: 40,
-                            style: {
-                                color: '#FFFFFF',
-                                background: '#EF4444',
-                                fontSize: '10px'
-                            }
-                        }
-                    },
-                    {
-                        y: hum.humMin,
-                        borderColor: '#EF4444',
-                        strokeDashArray: 4,
-                        label: {
-                            text: 'Min ' + hum.humMin + '%',
-                            position: 'left',
-                            offsetX: 40,
-                            style: {
-                                color: '#FFFFFF',
-                                background: '#EF4444',
-                                fontSize: '10px'
-                            }
-                        }
-                    }
-                ]
+                yaxis: buildThresholdAnnotations(hum.humMinA, hum.humMaxA, hum.humMinB, hum.humMaxB, '%')
             }
         };
 

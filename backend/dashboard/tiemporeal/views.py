@@ -146,15 +146,33 @@ def tiemporeal(request):
 
     # Umbrales realmente publicados desde Configuracion (node_config_log),
     # no un valor fijo en el codigo - ver NodeConfigLog.latest_thresholds.
-    thresholds = NodeConfigLog.latest_thresholds("nodo-a")
+    # A diferencia de historico/views.py (que todavia asume un unico
+    # umbral compartido), aqui se piden los de nodo-a y nodo-b por
+    # separado: la tarjeta "Parametros de Alerta" y el sombreado de la
+    # grafica necesitan poder distinguir cuando las configuraciones de
+    # ambos nodos difieren (ver tiemporeal.html y la seccion "Tiempo Real"
+    # de dashboard.js).
+    thresholds_a = NodeConfigLog.latest_thresholds("nodo-a")
+    thresholds_b = NodeConfigLog.latest_thresholds("nodo-b")
 
     context = {
         "selected_hora_inicio": hora_inicio.strftime("%H:%M"),
         "selected_hora_display": f"{hora_inicio.strftime('%H:%M')} - Ahora",
-        "temp_min": thresholds["temp_min"],
-        "temp_max": thresholds["temp_max"],
-        "hum_min": thresholds["hum_min"],
-        "hum_max": thresholds["hum_max"],
+        "temp_min_a": thresholds_a["temp_min"],
+        "temp_max_a": thresholds_a["temp_max"],
+        "hum_min_a": thresholds_a["hum_min"],
+        "hum_max_a": thresholds_a["hum_max"],
+        "temp_min_b": thresholds_b["temp_min"],
+        "temp_max_b": thresholds_b["temp_max"],
+        "hum_min_b": thresholds_b["hum_min"],
+        "hum_max_b": thresholds_b["hum_max"],
+        # Comparacion por metrica completa (min+max juntos), no campo por
+        # campo: es lo que decide si la tarjeta/grafica muestran un unico
+        # valor o el desglose por nodo (ver comentario arriba).
+        "temp_thresholds_match": (thresholds_a["temp_min"], thresholds_a["temp_max"])
+        == (thresholds_b["temp_min"], thresholds_b["temp_max"]),
+        "hum_thresholds_match": (thresholds_a["hum_min"], thresholds_a["hum_max"])
+        == (thresholds_b["hum_min"], thresholds_b["hum_max"]),
         "tiemporeal_chart_data": {
             "tempSeriesA": temp_series_a,
             "tempSeriesB": temp_series_b,

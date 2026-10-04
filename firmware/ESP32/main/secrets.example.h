@@ -24,3 +24,13 @@
 #define MQTT_BROKER_URL "mqtts://TU_INSTANCIA.hivemq.cloud:8883"
 #define MQTT_USERNAME "usuario_mqtt"
 #define MQTT_PASSWORD "password_mqtt"
+
+// MAC de estacion WiFi de cada nodo, para el enlace directo ESP-NOW entre
+// Nodo A y Nodo B (ver espnow/espnow.c): cada nodo le envia su mensaje de
+// emergencia al MAC del OTRO nodo, elegido en tiempo de ejecucion segun
+// NODE_ID, asi que ambas MAC deben estar definidas (y ser correctas) en
+// los dos nodos. Se obtienen encendiendo cada ESP32 y leyendo la MAC de
+// estacion WiFi que imprime por consola al arrancar (o con
+// esp_wifi_get_mac(WIFI_IF_STA, ...)).
+#define NODE_A_MAC {0x00, 0x00, 0x00, 0x00, 0x00, 0x00} // MAC WiFi STA del Nodo A
+#define NODE_B_MAC {0x00, 0x00, 0x00, 0x00, 0x00, 0x00} // MAC WiFi STA del Nodo B

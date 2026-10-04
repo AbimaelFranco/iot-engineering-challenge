@@ -2,14 +2,15 @@
  * Pulsador de emergencia en GPIO25 (pull-down externo: en reposo el pin
  * queda en 0, al presionar sube a 1). A diferencia de led_alarm/buzzer/fan
  * (que sondean su patron de fondo en un loop propio), este modulo detecta
- * la pulsacion por interrupcion (flanco ascendente) y, ante cada una, hace
- * sonar el buzzer (ver buzzer/buzzer.h) 5 veces muy rapido sin alterar el
- * patron de fondo que tuviera (p.ej. la alarma sonora habilitada por MQTT,
- * ver mqtt/mqtt_telemetry.c). La ISR no hace mas que notificar a una tarea
- * propia: nunca llama a buzzer_pulse() ni hace otro trabajo directamente
- * dentro de la interrupcion. Esa tarea tambien resuelve el antirrebote,
- * ignorando pulsaciones nuevas durante EMERGENCY_BUTTON_DEBOUNCE_MS
- * despues de disparar.
+ * la pulsacion por interrupcion (flanco ascendente) y, ante cada una,
+ * manda "paro de emergencia" al otro nodo por ESP-NOW (ver
+ * espnow_send_emergency_stop() en espnow/espnow.c); es el OTRO nodo quien,
+ * al recibir ese mensaje, hace sonar su buzzer local (ver
+ * espnow_recv_cb() en espnow/espnow.c) - y viceversa. La ISR no hace mas
+ * que notificar a una tarea propia: nunca llama a espnow_send_emergency_stop()
+ * ni hace otro trabajo directamente dentro de la interrupcion. Esa tarea
+ * tambien resuelve el antirrebote, ignorando pulsaciones nuevas durante
+ * EMERGENCY_BUTTON_DEBOUNCE_MS despues de disparar.
  */
 
 #include <stdio.h>
@@ -20,6 +21,7 @@
 
 #include "emergency_button.h"
 #include "buzzer/buzzer.h"
+#include "espnow/espnow.h"
 
 #define EMERGENCY_BUTTON_GPIO GPIO_NUM_25
 #define EMERGENCY_BUTTON_DEBOUNCE_MS 300
@@ -41,10 +43,11 @@ static void IRAM_ATTR emergency_button_isr_handler(void *arg)
     portYIELD_FROM_ISR(higher_priority_task_woken);
 }
 
-// Espera cada pulsacion notificada por la ISR y dispara el pulso de
-// alerta en el buzzer. Tras disparar, espera EMERGENCY_BUTTON_DEBOUNCE_MS
-// y descarta cualquier notificacion que haya llegado durante ese lapso
-// (rebotes del pulsador) antes de volver a esperar la proxima pulsacion.
+// Espera cada pulsacion notificada por la ISR y manda el aviso de "paro
+// de emergencia" al otro nodo por ESP-NOW. Tras disparar, espera
+// EMERGENCY_BUTTON_DEBOUNCE_MS y descarta cualquier notificacion que
+// haya llegado durante ese lapso (rebotes del pulsador) antes de volver
+// a esperar la proxima pulsacion.
 static void emergency_button_task(void *arg)
 {
     (void)arg;
@@ -53,9 +56,14 @@ static void emergency_button_task(void *arg)
     {
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
-        printf("Pulsador de emergencia GPIO%d: pulsacion detectada, alertando con el buzzer\n",
+        printf("Pulsador de emergencia GPIO%d: pulsacion detectada, enviando \"paro de emergencia\" por ESP-NOW\n",
                EMERGENCY_BUTTON_GPIO);
-        buzzer_pulse(EMERGENCY_BUTTON_PULSE_COUNT, EMERGENCY_BUTTON_PULSE_ON_MS, EMERGENCY_BUTTON_PULSE_OFF_MS);
+        espnow_send_emergency_stop();
+
+        // Ya no suena el buzzer local al presionar este boton: ahora el
+        // aviso viaja por ESP-NOW y es el OTRO nodo el que suena su
+        // buzzer al recibirlo (ver espnow_recv_cb() en espnow/espnow.c).
+        // buzzer_pulse(EMERGENCY_BUTTON_PULSE_COUNT, EMERGENCY_BUTTON_PULSE_ON_MS, EMERGENCY_BUTTON_PULSE_OFF_MS);
 
         vTaskDelay(pdMS_TO_TICKS(EMERGENCY_BUTTON_DEBOUNCE_MS));
         ulTaskNotifyTake(pdTRUE, 0);

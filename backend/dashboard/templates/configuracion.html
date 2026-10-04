@@ -82,6 +82,15 @@
           </div>
         </div>
 
+        <div class="card border-light shadow-sm p-4 mb-4">
+          <h5 class="card-title mb-1">Ventilador</h5>
+          <p class="text-muted mb-3">Encendido/apagado remoto del ventilador del nodo objetivo.</p>
+          <div class="form-switch-custom">
+            <input class="form-switch-input-custom" type="checkbox" id="config-fan-enabled">
+            <label class="form-switch-label" for="config-fan-enabled">Ventilador encendido</label>
+          </div>
+        </div>
+
         <div id="config-alert-area"></div>
 
         <div class="d-flex justify-content-end">
@@ -112,6 +121,7 @@
               <span>
                 <i class="bi {% if cfg.buzzer_enabled %}bi-volume-up-fill text-lime{% else %}bi-volume-mute-fill text-muted{% endif %}"></i>
                 <i class="bi {% if cfg.visual_alarm_enabled %}bi-lightbulb-fill text-lime{% else %}bi-lightbulb text-muted{% endif %} ms-1"></i>
+                <i class="bi bi-fan {% if cfg.fan_enabled %}text-lime{% else %}text-muted{% endif %} ms-1"></i>
               </span>
             </div>
           </div>

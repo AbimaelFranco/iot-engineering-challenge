@@ -1436,6 +1436,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const configBuzzer = document.getElementById('config-buzzer-enabled');
         const configVisualAlarm = document.getElementById('config-visual-alarm-enabled');
         const configFan = document.getElementById('config-fan-enabled');
+        const configFanManual = document.getElementById('config-fan-manual-enabled');
         const configRangoError = document.getElementById('config-rango-error');
         const configAlertArea = document.getElementById('config-alert-area');
         const configBtnActualizar = document.getElementById('config-btn-actualizar');
@@ -1465,6 +1466,7 @@ document.addEventListener('DOMContentLoaded', function () {
             configBuzzer.checked = !!baseline.buzzer_enabled;
             configVisualAlarm.checked = !!baseline.visual_alarm_enabled;
             configFan.checked = !!baseline.fan_enabled;
+            configFanManual.checked = !!baseline.fan_manual_enabled;
         }
 
         if (configNodeTarget) {
@@ -1500,7 +1502,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 hum_max: parseFloat(configHumMax.value),
                 buzzer_enabled: configBuzzer.checked,
                 visual_alarm_enabled: configVisualAlarm.checked,
-                fan_enabled: configFan.checked
+                fan_enabled: configFan.checked,
+                fan_manual_enabled: configFanManual.checked
             };
         }
 
@@ -1543,7 +1546,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         '<li>Humedad: ' + payload.hum_min + '% - ' + payload.hum_max + '%</li>' +
                         '<li>Alarma sonora: ' + (payload.buzzer_enabled ? 'Activada' : 'Desactivada') + '</li>' +
                         '<li>Alarma visual: ' + (payload.visual_alarm_enabled ? 'Activada' : 'Desactivada') + '</li>' +
-                        '<li>Ventilador: ' + (payload.fan_enabled ? 'Encendido' : 'Apagado') + '</li>';
+                        '<li>Ventilador por umbral: ' + (payload.fan_enabled ? 'Activado' : 'Desactivado') + '</li>' +
+                        '<li>Ventilador manual: ' + (payload.fan_manual_enabled ? 'Encendido (forzado)' : 'Apagado') + '</li>';
                 }
 
                 if (configModal) {

@@ -35,7 +35,8 @@ def _latest_config_by_node():
             .order_by("-sent_at")
             .values(
                 "temp_min", "temp_max", "hum_min", "hum_max",
-                "buzzer_enabled", "visual_alarm_enabled", "fan_enabled", "sent_at",
+                "buzzer_enabled", "visual_alarm_enabled", "fan_enabled",
+                "fan_manual_enabled", "sent_at",
             )
             .first()
         )
@@ -52,6 +53,7 @@ def _latest_config_by_node():
                 "buzzer_enabled": row["buzzer_enabled"],
                 "visual_alarm_enabled": row["visual_alarm_enabled"],
                 "fan_enabled": row["fan_enabled"],
+                "fan_manual_enabled": row["fan_manual_enabled"],
                 "sent_at": row["sent_at"].strftime("%Y-%m-%d %H:%M:%S"),
                 "is_default": False,
             }
@@ -154,6 +156,7 @@ def _parse_config_payload(data):
     buzzer_enabled = bool(data.get("buzzer_enabled"))
     visual_alarm_enabled = bool(data.get("visual_alarm_enabled"))
     fan_enabled = bool(data.get("fan_enabled"))
+    fan_manual_enabled = bool(data.get("fan_manual_enabled"))
 
     t_lo, t_hi = TEMP_PHYSICAL_RANGE
     h_lo, h_hi = HUM_PHYSICAL_RANGE
@@ -170,6 +173,7 @@ def _parse_config_payload(data):
         "buzzer_enabled": buzzer_enabled,
         "visual_alarm_enabled": visual_alarm_enabled,
         "fan_enabled": fan_enabled,
+        "fan_manual_enabled": fan_manual_enabled,
     }
     targets = NODE_IDS if node_target == "ambos" else [node_target]
     return (config, targets), None

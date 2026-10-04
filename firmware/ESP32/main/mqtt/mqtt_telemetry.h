@@ -11,8 +11,11 @@
 // Al conectar (y en cada reconexión) tambien se suscribe a
 // iot-challenge/config/<NODE_ID> (retained, QoS1): el broker reentrega de
 // inmediato la ultima configuracion de alertas/alarmas publicada desde el
-// dashboard. De momento cada mensaje recibido solo se imprime por consola
-// (ver mqtt_telemetry.c); todavia no se usa para accionar nada.
+// dashboard. Cada mensaje recibido se guarda (umbrales de temp/hum y los
+// flags de habilitacion del buzzer/LED/ventilador) y se usa para encender
+// esos actuadores de forma fija cuando la lectura del AHT10 quede fuera
+// de los umbrales configurados (ver evaluate_alarm_thresholds() en
+// mqtt_telemetry.c).
 // Es fatal (propaga error) si falla WiFi o la inicialización del cliente
 // MQTT; si solo falla la sincronización de hora, se avisa pero se continúa.
 esp_err_t mqtt_telemetry_init(void);

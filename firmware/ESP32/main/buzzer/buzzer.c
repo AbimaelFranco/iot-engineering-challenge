@@ -1,13 +1,15 @@
 /*
- * Control generico del buzzer en GPIO25: suena con el tiempo en
- * alto/bajo que indique el caller (ver buzzer_set_enabled()), o hace una
- * tanda de pulsos rapidos sin alterar ese patron de fondo (ver
- * buzzer_pulse()). Hoy lo usa mqtt/mqtt_telemetry.c para la alarma sonora
- * y como confirmacion de recepcion de un mensaje de configuracion, pero el
- * modulo no conoce esa semantica: solo sabe sonar, pulsar o quedarse en
- * silencio. Corre en su propia tarea FreeRTOS para no interferir con el
- * loop principal de lectura del sensor (ESP32.c) ni con el cliente MQTT.
- * Misma estructura que led_alarm (ver led_alarm.c).
+ * Control generico del buzzer en GPIO32: suena con el tiempo en
+ * alto/bajo que indique el caller (ver buzzer_set_enabled()), se queda
+ * sonando de forma fija (ver buzzer_set_constant()), o hace una tanda de
+ * pulsos rapidos sin alterar ese patron de fondo (ver buzzer_pulse()).
+ * Hoy lo usa mqtt/mqtt_telemetry.c para la alarma sonora (encendido fijo
+ * mientras la lectura del AHT10 este fuera de los umbrales configurados)
+ * y como confirmacion de recepcion de un mensaje de configuracion, pero
+ * el modulo no conoce esa semantica: solo sabe sonar, quedarse sonando,
+ * pulsar o quedarse en silencio. Corre en su propia tarea FreeRTOS para
+ * no interferir con el loop principal de lectura del sensor (ESP32.c) ni
+ * con el cliente MQTT. Misma estructura que led_alarm (ver led_alarm.c).
  */
 
 #include <stdio.h>
@@ -18,7 +20,7 @@
 
 #include "buzzer.h"
 
-#define BUZZER_GPIO GPIO_NUM_25
+#define BUZZER_GPIO GPIO_NUM_32
 #define BUZZER_IDLE_POLL_MS 200
 
 static TaskHandle_t s_task_handle = NULL;
@@ -26,6 +28,8 @@ static TaskHandle_t s_task_handle = NULL;
 static volatile bool s_enabled = false;
 static volatile uint32_t s_on_ms = 0;
 static volatile uint32_t s_off_ms = 0;
+
+static volatile bool s_constant_enabled = false;
 
 static volatile bool s_pulse_pending = false;
 static volatile uint8_t s_pulse_count = 0;
@@ -59,11 +63,13 @@ static void run_pulse(void)
     }
 }
 
-// Patron de fondo (buzzer_set_enabled()) cuando no hay un pulso pendiente:
-// suena con s_on_ms/s_off_ms mientras s_enabled este activo, o se
-// mantiene en silencio. Usa wait_or_notified() en vez de vTaskDelay para
-// que un pulso pueda interrumpir un tramo largo (hasta varios segundos)
-// de inmediato en vez de esperar a que termine.
+// Patron de fondo (buzzer_set_enabled()/buzzer_set_constant()) cuando no
+// hay un pulso pendiente: si esta en modo constante se queda sonando de
+// forma fija; si no, suena con s_on_ms/s_off_ms mientras s_enabled este
+// activo, o se mantiene en silencio. El modo constante tiene prioridad
+// sobre el parpadeo (ver buzzer_set_constant()). Usa wait_or_notified() en
+// vez de vTaskDelay para que un pulso pueda interrumpir un tramo largo
+// (hasta varios segundos) de inmediato en vez de esperar a que termine.
 static void buzzer_task(void *arg)
 {
     (void)arg;
@@ -73,6 +79,13 @@ static void buzzer_task(void *arg)
         if (s_pulse_pending)
         {
             run_pulse();
+            continue;
+        }
+
+        if (s_constant_enabled)
+        {
+            gpio_set_level(BUZZER_GPIO, 1);
+            wait_or_notified(BUZZER_IDLE_POLL_MS);
             continue;
         }
 
@@ -131,6 +144,20 @@ void buzzer_set_enabled(bool enabled, uint32_t on_ms, uint32_t off_ms)
     s_on_ms = on_ms;
     s_off_ms = off_ms;
     s_enabled = enabled;
+
+    if (s_task_handle != NULL)
+    {
+        xTaskNotifyGive(s_task_handle);
+    }
+}
+
+void buzzer_set_constant(bool enabled)
+{
+    if (enabled != s_constant_enabled)
+    {
+        printf("Buzzer GPIO%d: modo constante %s\n", BUZZER_GPIO, enabled ? "activado" : "desactivado");
+    }
+    s_constant_enabled = enabled;
 
     if (s_task_handle != NULL)
     {

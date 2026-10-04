@@ -11,6 +11,7 @@ DEFAULT_CONFIG = {
     "buzzer_enabled": True,
     "visual_alarm_enabled": True,
     "fan_enabled": False,
+    "fan_manual_enabled": False,
 }
 
 
@@ -35,7 +36,13 @@ class NodeConfigLog(models.Model):
     hum_max = models.FloatField()
     buzzer_enabled = models.BooleanField()
     visual_alarm_enabled = models.BooleanField()
+    # Dos formas de activar el ventilador, independientes entre si (ver
+    # evaluate_alarm_thresholds() en firmware/ESP32/main/mqtt/mqtt_telemetry.c):
+    # fan_enabled lo arma para que reaccione a temp_min/temp_max/hum_min/hum_max
+    # igual que buzzer/LED; fan_manual_enabled lo fuerza encendido sin
+    # importar la lectura y tiene mas peso que fan_enabled.
     fan_enabled = models.BooleanField()
+    fan_manual_enabled = models.BooleanField()
     topic = models.TextField()
     payload_raw = models.TextField()
     sent_at = models.DateTimeField()

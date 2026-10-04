@@ -114,7 +114,14 @@
                       <i class="bi bi-thermometer-half"></i>
                       <span>Temperatura</span>
                     </div>
-                    <div class="historico-alert-col-value">{{ temp_min }}°C - {{ temp_max }}°C</div>
+                    {% if temp_thresholds_match %}
+                    <div class="historico-alert-col-value">{{ temp_min_a }}°C - {{ temp_max_a }}°C</div>
+                    {% else %}
+                    <div class="historico-alert-col-value-split">
+                      <div class="historico-alert-node-value"><span class="historico-alert-node-tag">Nodo A</span>{{ temp_min_a }}°C - {{ temp_max_a }}°C</div>
+                      <div class="historico-alert-node-value"><span class="historico-alert-node-tag">Nodo B</span>{{ temp_min_b }}°C - {{ temp_max_b }}°C</div>
+                    </div>
+                    {% endif %}
                   </div>
                   <div class="vr"></div>
                   <div class="historico-alert-col">
@@ -122,7 +129,14 @@
                       <i class="bi bi-droplet-half"></i>
                       <span>Humedad</span>
                     </div>
-                    <div class="historico-alert-col-value">{{ hum_min }}% - {{ hum_max }}%</div>
+                    {% if hum_thresholds_match %}
+                    <div class="historico-alert-col-value">{{ hum_min_a }}% - {{ hum_max_a }}%</div>
+                    {% else %}
+                    <div class="historico-alert-col-value-split">
+                      <div class="historico-alert-node-value"><span class="historico-alert-node-tag">Nodo A</span>{{ hum_min_a }}% - {{ hum_max_a }}%</div>
+                      <div class="historico-alert-node-value"><span class="historico-alert-node-tag">Nodo B</span>{{ hum_min_b }}% - {{ hum_max_b }}%</div>
+                    </div>
+                    {% endif %}
                   </div>
                 </div>
               </div>
@@ -398,10 +412,14 @@
 {{ tiemporeal_chart_data|json_script:"tiemporeal-chart-data" }}
 <script>
   window.TIEMPOREAL_THRESHOLDS = {
-    tempMin: {{ temp_min }},
-    tempMax: {{ temp_max }},
-    humMin: {{ hum_min }},
-    humMax: {{ hum_max }}
+    tempMinA: {{ temp_min_a }},
+    tempMaxA: {{ temp_max_a }},
+    tempMinB: {{ temp_min_b }},
+    tempMaxB: {{ temp_max_b }},
+    humMinA: {{ hum_min_a }},
+    humMaxA: {{ hum_max_a }},
+    humMinB: {{ hum_min_b }},
+    humMaxB: {{ hum_max_b }}
   };
   window.TIEMPOREAL_LATEST_URL = "{% url 'tiemporeal_latest' %}";
 </script>

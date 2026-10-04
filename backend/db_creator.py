@@ -119,6 +119,7 @@ CREATE TABLE IF NOT EXISTS node_config_log (
     buzzer_enabled        BOOLEAN NOT NULL,
     visual_alarm_enabled  BOOLEAN NOT NULL,
     fan_enabled           BOOLEAN NOT NULL DEFAULT false,
+    fan_manual_enabled    BOOLEAN NOT NULL DEFAULT false,
     topic                 TEXT NOT NULL,
     payload_raw           TEXT NOT NULL,
     sent_at               TIMESTAMP(0) NOT NULL DEFAULT {_NOW_LOCAL}
@@ -179,6 +180,11 @@ MIGRATIONS = [
         "node_config_log.fan_enabled (nueva columna)",
         "ALTER TABLE node_config_log "
         "ADD COLUMN IF NOT EXISTS fan_enabled BOOLEAN NOT NULL DEFAULT false;",
+    ),
+    (
+        "node_config_log.fan_manual_enabled (nueva columna)",
+        "ALTER TABLE node_config_log "
+        "ADD COLUMN IF NOT EXISTS fan_manual_enabled BOOLEAN NOT NULL DEFAULT false;",
     ),
 ]
 

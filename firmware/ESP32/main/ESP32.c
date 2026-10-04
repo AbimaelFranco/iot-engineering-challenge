@@ -11,6 +11,8 @@
 #include "led_alarm/led_alarm.h"
 #include "buzzer/buzzer.h"
 #include "fan/fan.h"
+#include "emergency_button/emergency_button.h"
+#include "espnow/espnow.h"
 
 #define READ_PERIOD_MS 60000
 
@@ -29,7 +31,7 @@ void app_main(void)
     // nodo (telemetría/MQTT) no depende de esto.
     if (buzzer_init() != ESP_OK)
     {
-        printf("No se pudo inicializar el buzzer (GPIO25), se continua sin el.\n");
+        printf("No se pudo inicializar el buzzer (GPIO32), se continua sin el.\n");
     }
 
     // No es fatal si falla: seguimos sin control remoto del ventilador,
@@ -44,6 +46,24 @@ void app_main(void)
     {
         printf("No se pudo inicializar WiFi/MQTT.\n");
         return;
+    }
+
+    // No es fatal si falla: seguimos sin el enlace directo ESP-NOW hacia
+    // el otro nodo, pero el resto del nodo (telemetría/MQTT) no depende
+    // de esto. Requiere que el WiFi ya este arriba (ver mqtt_telemetry_init()
+    // arriba).
+    if (espnow_init() != ESP_OK)
+    {
+        printf("No se pudo inicializar ESP-NOW, se continua sin el.\n");
+    }
+
+    // No es fatal si falla: seguimos sin pulsador de emergencia, pero el
+    // resto del nodo (telemetría/MQTT) no depende de esto. Va despues de
+    // espnow_init() porque, al presionarlo, manda el aviso de emergencia
+    // al otro nodo por ESP-NOW (ver emergency_button.c).
+    if (emergency_button_init() != ESP_OK)
+    {
+        printf("No se pudo inicializar el pulsador de emergencia (GPIO25), se continua sin el.\n");
     }
 
     // Sin bus I2C no hay forma de hablar con el sensor: si falla, se aborta.

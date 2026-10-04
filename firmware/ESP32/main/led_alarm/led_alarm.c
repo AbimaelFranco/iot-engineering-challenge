@@ -1,13 +1,15 @@
 /*
  * Control generico del LED integrado en GPIO2: parpadea con el tiempo en
- * alto/bajo que indique el caller (ver led_alarm_set_enabled()), o hace
- * una tanda de pulsos rapidos sin alterar ese patron de fondo (ver
+ * alto/bajo que indique el caller (ver led_alarm_set_enabled()), se queda
+ * encendido de forma fija (ver led_alarm_set_constant()), o hace una
+ * tanda de pulsos rapidos sin alterar ese patron de fondo (ver
  * led_alarm_pulse()). Hoy lo usa mqtt/mqtt_telemetry.c para la alarma
- * visual y como confirmacion de recepcion de un mensaje de configuracion,
- * pero el modulo no conoce esa semantica: solo sabe parpadear, pulsar o
- * quedarse apagado. Corre en su propia tarea FreeRTOS para no interferir
- * con el loop principal de lectura del sensor (ESP32.c) ni con el cliente
- * MQTT.
+ * visual (encendido fijo mientras la lectura del AHT10 este fuera de los
+ * umbrales configurados) y como confirmacion de recepcion de un mensaje
+ * de configuracion, pero el modulo no conoce esa semantica: solo sabe
+ * parpadear, quedarse encendido, pulsar o quedarse apagado. Corre en su
+ * propia tarea FreeRTOS para no interferir con el loop principal de
+ * lectura del sensor (ESP32.c) ni con el cliente MQTT.
  */
 
 #include <stdio.h>
@@ -26,6 +28,8 @@ static TaskHandle_t s_task_handle = NULL;
 static volatile bool s_enabled = false;
 static volatile uint32_t s_on_ms = 0;
 static volatile uint32_t s_off_ms = 0;
+
+static volatile bool s_constant_enabled = false;
 
 static volatile bool s_pulse_pending = false;
 static volatile uint8_t s_pulse_count = 0;
@@ -59,11 +63,13 @@ static void run_pulse(void)
     }
 }
 
-// Patron de fondo (led_alarm_set_enabled()) cuando no hay un pulso
-// pendiente: parpadea con s_on_ms/s_off_ms mientras s_enabled este activo,
-// o se mantiene apagado. Usa wait_or_notified() en vez de vTaskDelay para
-// que un pulso pueda interrumpir un tramo largo (hasta varios segundos)
-// de inmediato en vez de esperar a que termine.
+// Patron de fondo (led_alarm_set_enabled()/led_alarm_set_constant()) cuando
+// no hay un pulso pendiente: si esta en modo constante se queda encendido
+// de forma fija; si no, parpadea con s_on_ms/s_off_ms mientras s_enabled
+// este activo, o se mantiene apagado. El modo constante tiene prioridad
+// sobre el parpadeo (ver led_alarm_set_constant()). Usa wait_or_notified()
+// en vez de vTaskDelay para que un pulso pueda interrumpir un tramo largo
+// (hasta varios segundos) de inmediato en vez de esperar a que termine.
 static void led_alarm_task(void *arg)
 {
     (void)arg;
@@ -73,6 +79,13 @@ static void led_alarm_task(void *arg)
         if (s_pulse_pending)
         {
             run_pulse();
+            continue;
+        }
+
+        if (s_constant_enabled)
+        {
+            gpio_set_level(LED_GPIO, 1);
+            wait_or_notified(LED_IDLE_POLL_MS);
             continue;
         }
 
@@ -131,6 +144,20 @@ void led_alarm_set_enabled(bool enabled, uint32_t on_ms, uint32_t off_ms)
     s_on_ms = on_ms;
     s_off_ms = off_ms;
     s_enabled = enabled;
+
+    if (s_task_handle != NULL)
+    {
+        xTaskNotifyGive(s_task_handle);
+    }
+}
+
+void led_alarm_set_constant(bool enabled)
+{
+    if (enabled != s_constant_enabled)
+    {
+        printf("LED GPIO%d: modo constante %s\n", LED_GPIO, enabled ? "activado" : "desactivado");
+    }
+    s_constant_enabled = enabled;
 
     if (s_task_handle != NULL)
     {

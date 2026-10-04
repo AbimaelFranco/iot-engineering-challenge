@@ -63,11 +63,6 @@
 #define MQTT_CONFIG_ACK_QOS 1
 #define MQTT_CONFIG_ACK_RETAIN 0
 
-// Cadencia usada para fan_set_enabled() cuando fan_enabled=true: on_ms
-// grande y off_ms=0 para que el ventilador quede encendido de forma fija
-// (sin parpadeo perceptible) en vez de alternar como la alarma visual/sonora.
-#define FAN_STEADY_ON_MS (24UL * 60 * 60 * 1000)
-
 static EventGroupHandle_t s_wifi_event_group;
 static int s_wifi_retry_num = 0;
 
@@ -75,10 +70,18 @@ static esp_mqtt_client_handle_t s_mqtt_client = NULL;
 static volatile bool s_mqtt_connected = false;
 
 // Ultima configuracion de alertas/alarmas recibida en MQTT_TOPIC_CONFIG.
-// visual_alarm_enabled y buzzer_enabled ya se usan para controlar el LED
-// (led_alarm.h) y el buzzer (buzzer.h); fan_enabled controla el ventilador
-// (fan.h). Los umbrales de temp/hum se guardan para uso futuro y de
-// momento solo se imprimen (ver handle_config_event()).
+// temp_min/temp_max/hum_min/hum_max son los umbrales contra los que se
+// compara cada lectura del AHT10; buzzer_enabled/visual_alarm_enabled
+// habilitan (o no) que el buzzer/LED reaccionen cuando la lectura esta
+// fuera de esos umbrales (ver evaluate_alarm_thresholds()). El ventilador
+// tiene dos formas de activarse, independientes entre si: fan_enabled lo
+// arma para que reaccione a los mismos umbrales que el buzzer/LED, y
+// fan_manual_enabled lo fuerza encendido sin importar la lectura (tiene
+// mas peso que fan_enabled: si esta en true, el ventilador queda
+// encendido aunque la lectura este dentro de rango o fan_enabled sea
+// false). Si valida es false (todavia no llego ninguna configuracion) no
+// se dispara ninguna alarma por umbral (fan_manual_enabled si se respeta,
+// pero en ese caso tambien vale false por el mismo motivo).
 typedef struct
 {
     bool valida;
@@ -89,9 +92,48 @@ typedef struct
     bool buzzer_enabled;
     bool visual_alarm_enabled;
     bool fan_enabled;
+    bool fan_manual_enabled;
 } node_config_t;
 
 static node_config_t s_node_config = {0};
+
+// Ultima lectura valida del AHT10 (actualizada en mqtt_telemetry_publish(),
+// que el loop principal en ESP32.c llama con cada lectura exitosa).
+// Se guarda aca para poder reevaluar los umbrales de alarma apenas llega
+// una configuracion nueva (ver handle_config_event()), sin tener que
+// esperar a la siguiente lectura periodica.
+static volatile bool s_last_reading_valid = false;
+static volatile float s_last_temp = 0.0f;
+static volatile float s_last_hum = 0.0f;
+
+// Compara la ultima lectura del AHT10 contra los umbrales de la
+// configuracion vigente y enciende (de forma fija, sin parpadeo) el LED,
+// el buzzer y/o el ventilador segun corresponda. LED y buzzer solo
+// reaccionan si su flag de habilitacion (visual_alarm_enabled/
+// buzzer_enabled) esta activo Y la lectura esta fuera de [temp_min,
+// temp_max] o [hum_min, hum_max]. El ventilador ademas puede forzarse
+// con fan_manual_enabled, que tiene prioridad sobre el umbral: se
+// enciende si fan_manual_enabled es true, sin importar la lectura, o si
+// fan_enabled es true y la lectura esta fuera de rango (ver node_config_t
+// mas arriba). Si todavia no hay configuracion valida o todavia no hay
+// ninguna lectura, no se dispara ninguna alarma por umbral. Se llama
+// tanto al llegar una configuracion nueva como en cada lectura del
+// sensor (ver mqtt_telemetry_publish()), para que la alarma reaccione de
+// inmediato ante cualquiera de los dos cambios.
+static void evaluate_alarm_thresholds(void)
+{
+    bool out_of_range = false;
+
+    if (s_node_config.valida && s_last_reading_valid)
+    {
+        out_of_range = s_last_temp < s_node_config.temp_min || s_last_temp > s_node_config.temp_max ||
+                       s_last_hum < s_node_config.hum_min || s_last_hum > s_node_config.hum_max;
+    }
+
+    led_alarm_set_constant(s_node_config.visual_alarm_enabled && out_of_range);
+    buzzer_set_constant(s_node_config.buzzer_enabled && out_of_range);
+    fan_set_constant(s_node_config.fan_manual_enabled || (s_node_config.fan_enabled && out_of_range));
+}
 
 // Responde en MQTT_TOPIC_CONFIG_ACK (ver formato en Documentation/README.md)
 // confirmando que se proceso un mensaje de MQTT_TOPIC_CONFIG. "ack_ts" es
@@ -119,6 +161,7 @@ static void publish_config_ack(bool ok, double ack_ts, const char *reason)
         cJSON_AddBoolToObject(applied, "buzzer_enabled", s_node_config.buzzer_enabled);
         cJSON_AddBoolToObject(applied, "visual_alarm_enabled", s_node_config.visual_alarm_enabled);
         cJSON_AddBoolToObject(applied, "fan_enabled", s_node_config.fan_enabled);
+        cJSON_AddBoolToObject(applied, "fan_manual_enabled", s_node_config.fan_manual_enabled);
         cJSON_AddItemToObject(root, "applied", applied);
     }
     else
@@ -178,11 +221,12 @@ static void handle_config_event(esp_mqtt_event_handle_t event)
     cJSON *buzzer_enabled = cJSON_GetObjectItemCaseSensitive(root, "buzzer_enabled");
     cJSON *visual_alarm_enabled = cJSON_GetObjectItemCaseSensitive(root, "visual_alarm_enabled");
     cJSON *fan_enabled = cJSON_GetObjectItemCaseSensitive(root, "fan_enabled");
+    cJSON *fan_manual_enabled = cJSON_GetObjectItemCaseSensitive(root, "fan_manual_enabled");
 
     if (!cJSON_IsNumber(temp_min) || !cJSON_IsNumber(temp_max) ||
         !cJSON_IsNumber(hum_min) || !cJSON_IsNumber(hum_max) ||
         !cJSON_IsBool(buzzer_enabled) || !cJSON_IsBool(visual_alarm_enabled) ||
-        !cJSON_IsBool(fan_enabled))
+        !cJSON_IsBool(fan_enabled) || !cJSON_IsBool(fan_manual_enabled))
     {
         printf("Configuracion recibida con campos faltantes o invalidos, se descarta.\n");
         cJSON_Delete(root);
@@ -198,35 +242,33 @@ static void handle_config_event(esp_mqtt_event_handle_t event)
     s_node_config.buzzer_enabled = cJSON_IsTrue(buzzer_enabled);
     s_node_config.visual_alarm_enabled = cJSON_IsTrue(visual_alarm_enabled);
     s_node_config.fan_enabled = cJSON_IsTrue(fan_enabled);
+    s_node_config.fan_manual_enabled = cJSON_IsTrue(fan_manual_enabled);
 
     cJSON_Delete(root);
 
     // Confirmacion de recepcion: 2 pulsos rapidos (100ms) en LED y buzzer,
     // sin importar si las alarmas estan habilitadas o no. Interrumpe de
-    // inmediato el patron de fondo vigente y, al terminar, los dos set_*
-    // de abajo retoman (o cambian) ese patron de fondo.
+    // inmediato el patron de fondo vigente y, al terminar, retoma (o
+    // cambia) ese patron de fondo tal como lo deje evaluate_alarm_thresholds()
+    // abajo.
     led_alarm_pulse(2, 100, 100);
     buzzer_pulse(2, 100, 100);
 
-    // 1000/3000 ms (1s encendido/sonando, 3s apagado/silencio): cadencia
-    // de las alarmas visual y sonora, decidida aqui (led_alarm/buzzer no
-    // conocen esta semantica).
-    led_alarm_set_enabled(s_node_config.visual_alarm_enabled, 1000, 3000);
-    buzzer_set_enabled(s_node_config.buzzer_enabled, 1000, 3000);
-
-    // A diferencia de la alarma visual/sonora, el ventilador no debe
-    // parpadear: on_ms grande y off_ms=0 lo dejan encendido de forma fija
-    // mientras fan_enabled sea true (ver FAN_STEADY_ON_MS).
-    fan_set_enabled(s_node_config.fan_enabled, FAN_STEADY_ON_MS, 0);
+    // Reevalua de inmediato con la configuracion nueva (umbrales y flags
+    // de habilitacion) contra la ultima lectura conocida del AHT10, sin
+    // esperar al proximo ciclo de muestreo.
+    evaluate_alarm_thresholds();
 
     printf("Configuracion recibida en %s (retained=%d): temp_min=%.1f temp_max=%.1f "
-           "hum_min=%.1f hum_max=%.1f buzzer_enabled=%s visual_alarm_enabled=%s fan_enabled=%s\n",
+           "hum_min=%.1f hum_max=%.1f buzzer_enabled=%s visual_alarm_enabled=%s fan_enabled=%s "
+           "fan_manual_enabled=%s\n",
            MQTT_TOPIC_CONFIG, event->retain,
            s_node_config.temp_min, s_node_config.temp_max,
            s_node_config.hum_min, s_node_config.hum_max,
            s_node_config.buzzer_enabled ? "true" : "false",
            s_node_config.visual_alarm_enabled ? "true" : "false",
-           s_node_config.fan_enabled ? "true" : "false");
+           s_node_config.fan_enabled ? "true" : "false",
+           s_node_config.fan_manual_enabled ? "true" : "false");
 
     publish_config_ack(true, ack_ts, NULL);
 }
@@ -429,6 +471,15 @@ esp_err_t mqtt_telemetry_init(void)
 
 esp_err_t mqtt_telemetry_publish(float temperature, float humidity, uint32_t sample_ms, uint32_t seq)
 {
+    // Se actualiza y reevalua contra los umbrales configurados antes del
+    // chequeo de conexion de abajo: la alarma local (LED/buzzer/ventilador)
+    // debe seguir reaccionando a la lectura del sensor aunque el MQTT este
+    // caido; lo unico que depende de la conexion es la publicacion misma.
+    s_last_temp = temperature;
+    s_last_hum = humidity;
+    s_last_reading_valid = true;
+    evaluate_alarm_thresholds();
+
     if (!s_mqtt_connected)
     {
         return ESP_ERR_INVALID_STATE;

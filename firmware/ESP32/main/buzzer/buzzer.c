@@ -1,5 +1,5 @@
 /*
- * Control generico del buzzer en GPIO25: suena con el tiempo en
+ * Control generico del buzzer en GPIO32: suena con el tiempo en
  * alto/bajo que indique el caller (ver buzzer_set_enabled()), o hace una
  * tanda de pulsos rapidos sin alterar ese patron de fondo (ver
  * buzzer_pulse()). Hoy lo usa mqtt/mqtt_telemetry.c para la alarma sonora
@@ -18,7 +18,7 @@
 
 #include "buzzer.h"
 
-#define BUZZER_GPIO GPIO_NUM_25
+#define BUZZER_GPIO GPIO_NUM_32
 #define BUZZER_IDLE_POLL_MS 200
 
 static TaskHandle_t s_task_handle = NULL;

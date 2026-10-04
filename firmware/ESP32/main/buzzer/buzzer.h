@@ -5,7 +5,7 @@
 
 #include "esp_err.h"
 
-// Configura el buzzer (GPIO25) como salida y arranca en segundo plano la
+// Configura el buzzer (GPIO32) como salida y arranca en segundo plano la
 // tarea que lo hace sonar segun lo que indique buzzer_set_enabled().
 // Llamar una sola vez al arrancar; el buzzer queda apagado hasta la
 // primera llamada a buzzer_set_enabled(true, ...).

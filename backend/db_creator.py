@@ -118,6 +118,7 @@ CREATE TABLE IF NOT EXISTS node_config_log (
     hum_max               NUMERIC(6,2) NOT NULL,
     buzzer_enabled        BOOLEAN NOT NULL,
     visual_alarm_enabled  BOOLEAN NOT NULL,
+    fan_enabled           BOOLEAN NOT NULL DEFAULT false,
     topic                 TEXT NOT NULL,
     payload_raw           TEXT NOT NULL,
     sent_at               TIMESTAMP(0) NOT NULL DEFAULT {_NOW_LOCAL}
@@ -173,6 +174,11 @@ MIGRATIONS = [
         "ALTER TABLE node_readings "
         "ALTER COLUMN temperature TYPE NUMERIC(6,3), "
         "ALTER COLUMN humidity TYPE NUMERIC(6,3);",
+    ),
+    (
+        "node_config_log.fan_enabled (nueva columna)",
+        "ALTER TABLE node_config_log "
+        "ADD COLUMN IF NOT EXISTS fan_enabled BOOLEAN NOT NULL DEFAULT false;",
     ),
 ]
 

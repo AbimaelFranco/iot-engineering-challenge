@@ -10,6 +10,7 @@
 #include "mqtt/mqtt_telemetry.h"
 #include "led_alarm/led_alarm.h"
 #include "buzzer/buzzer.h"
+#include "fan/fan.h"
 
 #define READ_PERIOD_MS 60000
 
@@ -29,6 +30,13 @@ void app_main(void)
     if (buzzer_init() != ESP_OK)
     {
         printf("No se pudo inicializar el buzzer (GPIO25), se continua sin el.\n");
+    }
+
+    // No es fatal si falla: seguimos sin control remoto del ventilador,
+    // pero el resto del nodo (telemetría/MQTT) no depende de esto.
+    if (fan_init() != ESP_OK)
+    {
+        printf("No se pudo inicializar el ventilador (GPIO23), se continua sin el.\n");
     }
 
     // Sin WiFi/MQTT no hay forma de publicar telemetría: si falla, se aborta.

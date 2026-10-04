@@ -31,6 +31,7 @@
 #include "mqtt_telemetry.h"
 #include "led_alarm/led_alarm.h"
 #include "buzzer/buzzer.h"
+#include "fan/fan.h"
 
 // WiFi: bits del event group usados para esperar el resultado de conexión
 #define WIFI_CONNECTED_BIT BIT0
@@ -62,6 +63,11 @@
 #define MQTT_CONFIG_ACK_QOS 1
 #define MQTT_CONFIG_ACK_RETAIN 0
 
+// Cadencia usada para fan_set_enabled() cuando fan_enabled=true: on_ms
+// grande y off_ms=0 para que el ventilador quede encendido de forma fija
+// (sin parpadeo perceptible) en vez de alternar como la alarma visual/sonora.
+#define FAN_STEADY_ON_MS (24UL * 60 * 60 * 1000)
+
 static EventGroupHandle_t s_wifi_event_group;
 static int s_wifi_retry_num = 0;
 
@@ -70,9 +76,9 @@ static volatile bool s_mqtt_connected = false;
 
 // Ultima configuracion de alertas/alarmas recibida en MQTT_TOPIC_CONFIG.
 // visual_alarm_enabled y buzzer_enabled ya se usan para controlar el LED
-// (led_alarm.h) y el buzzer (buzzer.h); los umbrales de temp/hum se
-// guardan para uso futuro y de momento solo se imprimen (ver
-// handle_config_event()).
+// (led_alarm.h) y el buzzer (buzzer.h); fan_enabled controla el ventilador
+// (fan.h). Los umbrales de temp/hum se guardan para uso futuro y de
+// momento solo se imprimen (ver handle_config_event()).
 typedef struct
 {
     bool valida;
@@ -82,6 +88,7 @@ typedef struct
     float hum_max;
     bool buzzer_enabled;
     bool visual_alarm_enabled;
+    bool fan_enabled;
 } node_config_t;
 
 static node_config_t s_node_config = {0};
@@ -111,6 +118,7 @@ static void publish_config_ack(bool ok, double ack_ts, const char *reason)
         cJSON_AddNumberToObject(applied, "hum_max", s_node_config.hum_max);
         cJSON_AddBoolToObject(applied, "buzzer_enabled", s_node_config.buzzer_enabled);
         cJSON_AddBoolToObject(applied, "visual_alarm_enabled", s_node_config.visual_alarm_enabled);
+        cJSON_AddBoolToObject(applied, "fan_enabled", s_node_config.fan_enabled);
         cJSON_AddItemToObject(root, "applied", applied);
     }
     else
@@ -169,10 +177,12 @@ static void handle_config_event(esp_mqtt_event_handle_t event)
     cJSON *hum_max = cJSON_GetObjectItemCaseSensitive(root, "hum_max");
     cJSON *buzzer_enabled = cJSON_GetObjectItemCaseSensitive(root, "buzzer_enabled");
     cJSON *visual_alarm_enabled = cJSON_GetObjectItemCaseSensitive(root, "visual_alarm_enabled");
+    cJSON *fan_enabled = cJSON_GetObjectItemCaseSensitive(root, "fan_enabled");
 
     if (!cJSON_IsNumber(temp_min) || !cJSON_IsNumber(temp_max) ||
         !cJSON_IsNumber(hum_min) || !cJSON_IsNumber(hum_max) ||
-        !cJSON_IsBool(buzzer_enabled) || !cJSON_IsBool(visual_alarm_enabled))
+        !cJSON_IsBool(buzzer_enabled) || !cJSON_IsBool(visual_alarm_enabled) ||
+        !cJSON_IsBool(fan_enabled))
     {
         printf("Configuracion recibida con campos faltantes o invalidos, se descarta.\n");
         cJSON_Delete(root);
@@ -187,6 +197,7 @@ static void handle_config_event(esp_mqtt_event_handle_t event)
     s_node_config.hum_max = (float)hum_max->valuedouble;
     s_node_config.buzzer_enabled = cJSON_IsTrue(buzzer_enabled);
     s_node_config.visual_alarm_enabled = cJSON_IsTrue(visual_alarm_enabled);
+    s_node_config.fan_enabled = cJSON_IsTrue(fan_enabled);
 
     cJSON_Delete(root);
 
@@ -203,13 +214,19 @@ static void handle_config_event(esp_mqtt_event_handle_t event)
     led_alarm_set_enabled(s_node_config.visual_alarm_enabled, 1000, 3000);
     buzzer_set_enabled(s_node_config.buzzer_enabled, 1000, 3000);
 
+    // A diferencia de la alarma visual/sonora, el ventilador no debe
+    // parpadear: on_ms grande y off_ms=0 lo dejan encendido de forma fija
+    // mientras fan_enabled sea true (ver FAN_STEADY_ON_MS).
+    fan_set_enabled(s_node_config.fan_enabled, FAN_STEADY_ON_MS, 0);
+
     printf("Configuracion recibida en %s (retained=%d): temp_min=%.1f temp_max=%.1f "
-           "hum_min=%.1f hum_max=%.1f buzzer_enabled=%s visual_alarm_enabled=%s\n",
+           "hum_min=%.1f hum_max=%.1f buzzer_enabled=%s visual_alarm_enabled=%s fan_enabled=%s\n",
            MQTT_TOPIC_CONFIG, event->retain,
            s_node_config.temp_min, s_node_config.temp_max,
            s_node_config.hum_min, s_node_config.hum_max,
            s_node_config.buzzer_enabled ? "true" : "false",
-           s_node_config.visual_alarm_enabled ? "true" : "false");
+           s_node_config.visual_alarm_enabled ? "true" : "false",
+           s_node_config.fan_enabled ? "true" : "false");
 
     publish_config_ack(true, ack_ts, NULL);
 }

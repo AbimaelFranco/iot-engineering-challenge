@@ -10,6 +10,7 @@ DEFAULT_CONFIG = {
     "hum_max": 80.0,
     "buzzer_enabled": True,
     "visual_alarm_enabled": True,
+    "fan_enabled": False,
 }
 
 
@@ -34,6 +35,7 @@ class NodeConfigLog(models.Model):
     hum_max = models.FloatField()
     buzzer_enabled = models.BooleanField()
     visual_alarm_enabled = models.BooleanField()
+    fan_enabled = models.BooleanField()
     topic = models.TextField()
     payload_raw = models.TextField()
     sent_at = models.DateTimeField()

@@ -1754,4 +1754,110 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+
+    // -----------------------------------------------------------------
+    // 8. Quick Actions (navbar "Crear"): Reporte (imprimir la pagina) y
+    // Excel (CSV con las lecturas que esta mostrando Historico/Tiempo
+    // Real). Excel esta deshabilitado en el html para el resto de
+    // paginas (ver partials/navbar.html), asi que aqui simplemente no
+    // existe #quick-action-excel en esas paginas.
+    // -----------------------------------------------------------------
+    const quickActionReporte = document.querySelector('#quick-action-reporte');
+    if (quickActionReporte) {
+        quickActionReporte.addEventListener('click', function (e) {
+            e.preventDefault();
+            window.print();
+        });
+    }
+
+    const quickActionExcel = document.querySelector('#quick-action-excel');
+    if (quickActionExcel) {
+        quickActionExcel.addEventListener('click', function (e) {
+            e.preventDefault();
+
+            function pad(n) {
+                return String(n).padStart(2, '0');
+            }
+
+            // Mismo valor que ApexCharts ya esta mostrando en el eje de
+            // tiempo (datetimeUTC: true, ver dashboard.js secciones 2b/2d):
+            // los campos UTC del epoch son la hora de pared original de
+            // Guatemala (ver _to_epoch_ms en historico/views.py), no una
+            // conversion real de zona horaria. Usar toLocaleString aqui
+            // aplicaria la zona horaria del navegador y desalinearia el
+            // CSV con lo que el usuario ve en la grafica.
+            function formatFechaHora(epochMs) {
+                const d = new Date(epochMs);
+                return {
+                    fecha: d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate()),
+                    hora: pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + ':' + pad(d.getUTCSeconds())
+                };
+            }
+
+            // tempSeriesX/humSeriesX quedan alineadas por indice (no por
+            // timestamp): ambas se derivan de la misma lista de lecturas
+            // de ese nodo, en el mismo orden (ver by_node en
+            // historico/views.py y tiemporeal/views.py), asi que el
+            // indice i de cada arreglo corresponde a la misma lectura.
+            function chartDataToRows(chartData) {
+                const rows = [];
+                [
+                    ['Nodo A', 'tempSeriesA', 'humSeriesA'],
+                    ['Nodo B', 'tempSeriesB', 'humSeriesB']
+                ].forEach(function (cfg) {
+                    const temps = chartData[cfg[1]] || [];
+                    const hums = chartData[cfg[2]] || [];
+                    temps.forEach(function (point, i) {
+                        rows.push({
+                            node: cfg[0],
+                            epochMs: point[0],
+                            temp: point[1],
+                            hum: hums[i] ? hums[i][1] : ''
+                        });
+                    });
+                });
+                rows.sort(function (a, b) { return a.epochMs - b.epochMs; });
+                return rows;
+            }
+
+            function csvEscape(value) {
+                const text = String(value);
+                return /[",\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+            }
+
+            function downloadCsv(filename, rows) {
+                const lines = [['Nodo', 'Fecha', 'Hora', 'Temperatura (C)', 'Humedad (%)'].join(',')];
+                rows.forEach(function (row) {
+                    const fh = formatFechaHora(row.epochMs);
+                    lines.push([row.node, fh.fecha, fh.hora, row.temp, row.hum].map(csvEscape).join(','));
+                });
+                // BOM inicial para que Excel detecte UTF-8 (acentos) solo.
+                const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                URL.revokeObjectURL(link.href);
+            }
+
+            const historicoDataEl = document.querySelector('#historico-chart-data');
+            if (historicoDataEl) {
+                const chartData = JSON.parse(historicoDataEl.textContent);
+                downloadCsv('historico_' + (window.HISTORICO_SELECTED_DATE || 'datos') + '.csv', chartDataToRows(chartData));
+                return;
+            }
+
+            // tiemporealChartData (declarada en la seccion 2d) se sigue
+            // actualizando con cada poll (seccion 2f), asi que exportarla
+            // tal cual refleja exactamente lo que esta en pantalla en ese
+            // momento, no solo la carga inicial de la pagina.
+            if (document.querySelector('#tiemporeal-chart-data')) {
+                const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+                downloadCsv('tiempo_real_' + stamp + '.csv', chartDataToRows(tiemporealChartData));
+            }
+        });
+    }
+
 });

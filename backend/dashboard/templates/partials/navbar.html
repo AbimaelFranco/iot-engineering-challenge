@@ -21,51 +21,24 @@
       </button>
       <ul class="dropdown-menu dropdown-menu-quick-action" aria-labelledby="quick-actions-dropdown">
         <li class="dropdown-header">Exportar</li>
-        <li><a class="dropdown-item" href="#"><i class="bi bi-file-earmark-text"></i> Reporte</a></li>
-        <li><a class="dropdown-item" href="#"><i class="bi bi-file-earmark-spreadsheet"></i> Excel</a></li>
+        <li><a class="dropdown-item" href="#" id="quick-action-reporte"><i class="bi bi-file-earmark-text"></i> Reporte</a></li>
+        <li>
+          {% if request.resolver_match.url_name == 'historico' or request.resolver_match.url_name == 'tiemporeal' %}
+          <a class="dropdown-item" href="#" id="quick-action-excel"><i class="bi bi-file-earmark-spreadsheet"></i> Excel</a>
+          {% else %}
+          <!-- Sin lecturas tabulares en esta pagina (ver home/views.py y
+               configuracion/views.py): se deja visible pero inactivo en
+               vez de ocultarlo, para que el usuario entienda que la
+               opcion existe pero no aplica aqui. -->
+          <a class="dropdown-item disabled" href="#" aria-disabled="true" tabindex="-1"><i class="bi bi-file-earmark-spreadsheet"></i> Excel</a>
+          {% endif %}
+        </li>
       </ul>
     </div>
   </div>
 
   <!-- Right actions -->
   <div class="navbar-actions">
-    <!-- Notifications Dropdown -->
-    <div class="dropdown">
-      <button class="navbar-action-btn dropdown-toggle" type="button" data-bs-toggle="dropdown"
-        aria-expanded="false" id="btn-notifications" data-bs-auto-close="outside">
-        <i class="bi bi-bell"></i>
-        <span class="navbar-action-badge"></span>
-      </button>
-      <div class="dropdown-menu dropdown-menu-end dropdown-menu-notification p-0"
-        aria-labelledby="btn-notifications">
-        <div class="notification-header">
-          <h6 class="notification-title">Notificaciones</h6>
-        </div>
-        <div class="notification-list">
-          <!-- Nodo conectado -->
-          <a href="#" class="notification-item">
-            <div class="notification-icon bg-success text-white">
-              <i class="bi bi-wifi"></i>
-            </div>
-            <div class="notification-content">
-              <p class="notification-text">Nodo conectado</p>
-              <span class="notification-time">Hace 2 min</span>
-            </div>
-          </a>
-          <!-- Nodo desconectado -->
-          <a href="#" class="notification-item">
-            <div class="notification-icon bg-danger text-white">
-              <i class="bi bi-wifi-off"></i>
-            </div>
-            <div class="notification-content">
-              <p class="notification-text">Nodo desconectado</p>
-              <span class="notification-time">Hace 1 hora</span>
-            </div>
-          </a>
-        </div>
-      </div>
-    </div>
-
     <!-- Profile Dropdown -->
     <div class="dropdown ms-2">
       <button class="navbar-profile-btn dropdown-toggle" type="button" data-bs-toggle="dropdown"

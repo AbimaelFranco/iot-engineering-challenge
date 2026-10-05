@@ -3444,5 +3444,54 @@ span.flatpickr-weekday {
     transform: translateY(-8px);
 }
 
+/* ---------------------------------------------------------------------
+   11. Vista de impresion ("Reporte" del dropdown Crear, ver
+   #quick-action-reporte en dashboard.js -> window.print()). Oculta todo
+   lo que no tiene sentido en papel (sidebar, navbar, botones, pickers,
+   dropdowns) y deja solo titulo + tarjetas + graficas, con colores
+   exactos (apagados por defecto por los navegadores al imprimir).
+--------------------------------------------------------------------- */
+@media print {
+    @page {
+        margin: 1.5cm;
+    }
+
+    * {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    body {
+        background: #fff;
+    }
+
+    .sidebar-wrapper,
+    .sidebar-overlay,
+    .navbar-custom,
+    .footer-custom,
+    .config-ack-toast-area,
+    .btn-date-picker,
+    .btn-quick-action,
+    .dropdown,
+    .apexcharts-toolbar {
+        display: none !important;
+    }
+
+    .main-wrapper {
+        margin-left: 0 !important;
+        padding: 0 !important;
+    }
+
+    .card {
+        box-shadow: none !important;
+        border: 1px solid var(--border-light);
+        break-inside: avoid;
+    }
+
+    .page-header {
+        box-shadow: none !important;
+    }
+}
+
 
 

@@ -15,10 +15,19 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
+from django.contrib.auth import views as auth_views
 from django.urls import include, path
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    # Reusa el mismo template que el login de /admin/ (templates/admin/login.html)
+    # como puerta de entrada del sitio: sin sesion valida, @login_required en
+    # cada vista del dashboard redirige aqui (ver LOGIN_URL en settings.py).
+    path('login/', auth_views.LoginView.as_view(
+        template_name='admin/login.html',
+        redirect_authenticated_user=True,
+    ), name='login'),
+    path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('', include('home.urls')),
     path('historico/', include('historico.urls')),
     path('tiempo-real/', include('tiemporeal.urls')),

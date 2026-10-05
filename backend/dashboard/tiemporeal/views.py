@@ -1,6 +1,7 @@
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 
+from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_GET
@@ -87,6 +88,7 @@ def _series_promedio(readings, field):
     return series
 
 
+@login_required
 def tiemporeal(request):
     selected_date = _parse_fecha(request.GET.get("fecha"))
 
@@ -202,6 +204,7 @@ def _parse_since(raw):
     return datetime.fromtimestamp(since_ms / 1000, tz=timezone.utc).replace(tzinfo=None)
 
 
+@login_required
 @require_GET
 def tiemporeal_latest(request):
     """Lecturas nuevas desde la ultima vez que el cliente pregunto.

@@ -2,6 +2,7 @@ import statistics
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta, timezone
 
+from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 
 from configuracion.models import NodeConfigLog
@@ -89,6 +90,7 @@ def _stat_rows(stats_a, stats_b, unit):
     ]
 
 
+@login_required
 def historico(request):
     selected_date = _parse_fecha(request.GET.get("fecha"))
     hora_inicio = _parse_hora(request.GET.get("hora_inicio"), HORA_INICIO_DEFAULT)

@@ -149,6 +149,13 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# Login obligatorio para todo el dashboard (home/historico/tiemporeal/
+# configuracion, ver @login_required en cada views.py): sin sesion, cualquier
+# intento de entrar redirige aqui con "?next=" de vuelta a la pagina pedida.
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'home'
+LOGOUT_REDIRECT_URL = 'login'
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/6.1/topics/i18n/

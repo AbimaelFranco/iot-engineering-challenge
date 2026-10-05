@@ -29,6 +29,15 @@
        backend/dashboard/plantilla/page-login.html, la referencia original
        del theme) para que /admin/login/ se vea igual que el resto del
        panel en vez del skin de AdminLTE que trae Jazzmin de fabrica.
+
+       Este mismo template se reutiliza tambien como puerta de entrada del
+       sitio publico (ver name="login" en config/urls.py, LoginView con
+       template_name="admin/login.html"): @login_required en cada vista del
+       dashboard (home/historico/tiemporeal/configuracion) redirige aqui
+       cuando no hay sesion. Por eso el action del form no apunta a
+       app_path a secas: esa variable solo existe en el login de /admin/;
+       cuando no existe (login generico) queda vacio y el form posta a la
+       URL actual, que es exactamente lo que se necesita en ambos casos.
        ========================================== -->
   <div class="login-wrapper">
     <!-- Glowing background shapes for modern visual appearance -->

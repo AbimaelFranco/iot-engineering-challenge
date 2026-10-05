@@ -1,6 +1,7 @@
 import json
 from datetime import datetime, timezone
 
+from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_GET, require_POST
@@ -82,6 +83,7 @@ def _parse_since(raw):
     return datetime.fromtimestamp(since_ms / 1000, tz=timezone.utc).replace(tzinfo=None)
 
 
+@login_required
 def configuracion(request):
     return render(request, "configuracion.html", {
         "node_config": _latest_config_by_node(),
@@ -92,6 +94,7 @@ def configuracion(request):
     })
 
 
+@login_required
 @require_GET
 def configuracion_ack_latest(request):
     """Acks nuevos (config/.../ack) desde la ultima vez que el cliente
@@ -210,6 +213,7 @@ def _parse_config_payload(data):
     return (new_values, targets), None
 
 
+@login_required
 @require_POST
 def configuracion_actualizar(request):
     """Publica la configuracion recibida (retained + QoS1, ver

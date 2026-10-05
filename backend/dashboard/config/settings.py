@@ -49,6 +49,9 @@ ALLOWED_HOSTS = [
 # Application definition
 
 INSTALLED_APPS = [
+    # jazzmin debe ir antes de django.contrib.admin (reemplaza sus templates
+    # por los suyos) - ver JAZZMIN_SETTINGS/JAZZMIN_UI_TWEAKS mas abajo.
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -177,5 +180,75 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 MAILERS = {
     'default': {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
+    },
+}
+
+
+# django-jazzmin (personalizacion visual de /admin/)
+# https://django-jazzmin.readthedocs.io/
+# site_logo/site_icon reutilizan el isotipo oficial del proyecto (el mismo
+# archivo que existe para la marca, ver static/assets/images/isotipo.svg;
+# el sidebar del dashboard en si usa un SVG inline, no este archivo, pero
+# es el isotipo "fuente" del proyecto). Rutas relativas a STATICFILES_DIRS.
+JAZZMIN_SETTINGS = {
+    "site_title": "IoT Admin",
+    "site_header": "IoT Admin",
+    "site_brand": "IoT Admin",
+    "site_logo": "assets/images/isotipo.svg",
+    "site_icon": "assets/images/isotipo.svg",
+    "login_logo": "assets/images/isotipo.svg",
+    "site_logo_classes": "",
+    "welcome_sign": "Panel de administracion - IoT Admin",
+    "copyright": "IoT Admin",
+    "show_ui_builder": False,
+    # Fuerza el verde institucional en la barra superior (ver
+    # static/assets/css/jazzmin-custom.css para el porque hace falta esto
+    # ademas de JAZZMIN_UI_TWEAKS["navbar"]).
+    "custom_css": "assets/css/jazzmin-custom.css",
+    # Boton visible en la barra superior (no escondido en un dropdown)
+    # para volver al dashboard publico del proyecto. "url": "home" se
+    # resuelve via reverse() porque no tiene "/" (ver get_custom_url() en
+    # jazzmin/utils.py).
+    "topmenu_links": [
+        {"name": "Volver al Dashboard", "url": "home", "icon": "fas fa-arrow-left"},
+    ],
+    # "Cerrar sesion" ya existe por defecto dentro del dropdown del
+    # usuario (arriba a la derecha), pero como boton escondido ahi es
+    # facil de pasar por alto. custom_js agrega uno visible en la barra
+    # superior que simplemente envia el formulario de logout real que
+    # jazzmin ya genera (#logout-form, con su propio CSRF) - ver
+    # static/assets/js/jazzmin-custom.js.
+    "custom_js": "assets/js/jazzmin-custom.js",
+}
+
+# Tema verde (acorde al verde institucional del dashboard, ver
+# --brand-forest-dark/--brand-lime en static/assets/css/main.css):
+# "minty" es el Bootswatch verde/menta que trae jazzmin de fabrica.
+#
+# OJO: django-jazzmin 3.0.5 reescribio su theming sobre AdminLTE 4 +
+# Bootstrap 5 (ver el comentario "AdminLTE v4 / Bootstrap 5" en su propio
+# jazzmin/css/main.css), y varias de las clases "skin" que documentan sus
+# defaults (sidebar-dark-<color>, navbar-<color>, accent-<color>, nav-flat)
+# ya NO tienen ningun CSS real detras en esta version - se confirmo
+# revisando el paquete instalado (ni en jazzmin/css/main.css ni en
+# vendor/adminlte/css/adminlte.min.css aparece, por ejemplo,
+# ".sidebar-dark-success" ni ".navbar-success"). Usarlas no rompe nada por
+# si solas, pero "navbar": "navbar-dark" SI es una clase real de Bootstrap
+# (fuerza texto claro) y, sin un bg-* real que la acompañe, quedaba sobre
+# el "bg-body" claro del template -> texto blanco sobre fondo blanco,
+# haciendo que la barra superior completa (y los botones de topmenu_links/
+# custom_js de abajo, que viven ahi) se viera vacia. Por eso aqui se le
+# agrega "bg-success" explicito en vez de confiar en una clase "skin".
+JAZZMIN_UI_TWEAKS = {
+    "theme": "minty",
+    "default_theme_mode": "light",
+    "navbar": "navbar-dark bg-success",
+    "button_classes": {
+        "primary": "btn-success",
+        "secondary": "btn-secondary",
+        "info": "btn-info",
+        "warning": "btn-warning",
+        "danger": "btn-danger",
+        "success": "btn-success",
     },
 }

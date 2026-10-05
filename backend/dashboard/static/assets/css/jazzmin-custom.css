@@ -1,0 +1,33 @@
+/*
+ * Fix de color para la barra superior del admin de Jazzmin (ver
+ * JAZZMIN_SETTINGS["custom_css"] en config/settings.py).
+ *
+ * JAZZMIN_UI_TWEAKS["navbar"] = "navbar-dark bg-success" no alcanzaba por
+ * si solo: el <nav id="jazzy-navbar"> de jazzmin (admin/base.html) ya trae
+ * fija la clase ".bg-body", y en el CSS compilado de cada tema Bootswatch
+ * (incluido "minty") ".bg-body" queda declarada DESPUES de ".bg-success".
+ * Como ambas son una sola clase (misma especificidad), gana la que
+ * aparece despues en la hoja de estilos, sin importar el orden de clases
+ * en el HTML - por eso la barra seguia viendose blanca (texto claro de
+ * "navbar-dark" sobre el fondo claro de "bg-body" que seguia ganando).
+ *
+ * La solucion robusta es un selector de mayor especificidad que cualquier
+ * combinacion de clases utilitarias: el id que jazzmin ya le pone a su
+ * <nav> (#jazzy-navbar), forzando aqui el verde institucional del
+ * proyecto (ver --brand-forest-medium/--brand-lime en
+ * static/assets/css/main.css) sin depender de como Bootstrap/Bootswatch
+ * ordenen sus propias clases internamente.
+ */
+#jazzy-navbar {
+    background-color: #072F1F !important;
+}
+
+#jazzy-navbar .nav-link,
+#jazzy-navbar .navbar-text {
+    color: #FFFFFF !important;
+}
+
+#jazzy-navbar .nav-link:hover,
+#jazzy-navbar .nav-link:focus {
+    color: #B4F105 !important;
+}

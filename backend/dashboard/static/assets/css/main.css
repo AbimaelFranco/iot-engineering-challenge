@@ -1969,6 +1969,13 @@ span.flatpickr-weekday {
     transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Isotipo oficial (ver templates/admin/login.html) en vez del icono
+   generico de la plantilla original - mismo alto que el texto de marca. */
+.login-brand-logo {
+    height: 2.25rem;
+    width: auto;
+}
+
 .login-brand:hover,
 .login-brand:hover i {
     color: var(--brand-lime-hover);

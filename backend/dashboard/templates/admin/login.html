@@ -1,0 +1,127 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iniciar sesion - IoT Admin</title>
+
+  <!-- SEO Optimization -->
+  <meta name="description" content="IoT Admin - plataforma de monitoreo y control de nodos IoT">
+  <meta name="author" content="IoT Admin">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="{% static 'assets/images/favicon.ico' %}">
+
+  <!-- Local Third-Party Libraries (100% Offline Compatible) -->
+  <link rel="stylesheet" href="{% static 'assets/libs/bootstrap/css/bootstrap.min.css' %}">
+  <link rel="stylesheet" href="{% static 'assets/libs/bootstrap-icons/bootstrap-icons.css' %}">
+
+  <!-- Main Design System & Custom Stylesheet -->
+  <link rel="stylesheet" href="{% static 'assets/css/main.css' %}">
+</head>
+<body>
+
+  <!-- ==========================================
+       START: Authentication Container & Login Card
+       Reemplaza el login por defecto de Jazzmin (admin/login.html de
+       django-jazzmin) con el diseño propio del dashboard (ver
+       backend/dashboard/plantilla/page-login.html, la referencia original
+       del theme) para que /admin/login/ se vea igual que el resto del
+       panel en vez del skin de AdminLTE que trae Jazzmin de fabrica.
+       ========================================== -->
+  <div class="login-wrapper">
+    <!-- Glowing background shapes for modern visual appearance -->
+    <div class="login-bg-shape login-bg-shape-1"></div>
+    <div class="login-bg-shape login-bg-shape-2"></div>
+
+    <!-- Main centered login card -->
+    <div class="login-card">
+
+      <!-- Brand Identity: isotipo oficial del proyecto (el mismo que la
+           barra lateral del dashboard, ver partials/sidebar.html) en vez
+           del icono generico de la plantilla original. -->
+      <a href="{% url 'home' %}" class="login-brand text-decoration-none">
+        <img src="{% static 'assets/images/isotipo.svg' %}" alt="IoT Admin" class="login-brand-logo">
+        <span>IoT Admin</span>
+      </a>
+
+      <p class="login-subtitle">Inicia sesion para acceder al panel de administracion</p>
+
+      {% if user.is_authenticated %}
+      <div class="alert-custom alert-custom-danger mb-3">
+        <i class="bi bi-exclamation-triangle-fill alert-custom-icon"></i>
+        <div class="alert-custom-content">
+          Ya iniciaste sesion como {{ username }}, pero esa cuenta no tiene acceso a esta
+          pagina. Inicia sesion con otra cuenta.
+        </div>
+      </div>
+      {% endif %}
+
+      {% if form.errors %}
+      <div class="alert-custom alert-custom-danger mb-3">
+        <i class="bi bi-exclamation-triangle-fill alert-custom-icon"></i>
+        <div class="alert-custom-content">
+          {% if form.non_field_errors %}
+          {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+          {% else %}
+          Usuario o contraseña incorrectos.
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Login Form: postea a la vista de login real de Django admin
+           (app_path), no a index.html como en la plantilla original. -->
+      <form action="{{ app_path }}" method="post" id="loginForm" class="needs-validation" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ next }}">
+
+        <!-- Username Input Group -->
+        <div class="login-form-group">
+          <label for="id_username" class="login-form-label">Usuario</label>
+          <div class="login-input-group">
+            <i class="bi bi-person input-icon"></i>
+            <input type="text" name="username" id="id_username" class="login-input" placeholder="usuario" required autofocus autocapitalize="none" autocomplete="username">
+          </div>
+        </div>
+
+        <!-- Password Input Group -->
+        <div class="login-form-group">
+          <label for="id_password" class="login-form-label">Contraseña</label>
+          <div class="login-input-group">
+            <i class="bi bi-shield-lock input-icon"></i>
+            <input type="password" name="password" id="id_password" class="login-input login-input-password" placeholder="••••••••" required autocomplete="current-password">
+            <button type="button" class="password-toggle-btn" id="toggle-password" aria-label="Mostrar contraseña">
+              <i class="bi bi-eye"></i>
+            </button>
+          </div>
+        </div>
+
+        {% url 'admin_password_reset' as password_reset_url %}
+        {% if password_reset_url %}
+        <div class="login-options">
+          <a href="{{ password_reset_url }}" class="forgot-password-link">¿Olvidaste tu contraseña?</a>
+        </div>
+        {% endif %}
+
+        <!-- Submit Button -->
+        <button type="submit" class="btn-login" id="btn-submit">
+          <span>Iniciar sesion</span>
+          <i class="bi bi-arrow-right"></i>
+        </button>
+
+      </form>
+
+    </div>
+  </div>
+  <!-- END: Authentication Container -->
+
+  <!-- Local Bootstrap bundle -->
+  <script src="{% static 'assets/libs/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+
+  <!-- Custom Authentication interactions script (toggle de contraseña +
+       validacion de campos requeridos, ver static/assets/js/auth.js) -->
+  <script src="{% static 'assets/js/auth.js' %}"></script>
+</body>
+</html>

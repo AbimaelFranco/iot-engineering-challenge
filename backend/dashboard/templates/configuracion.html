@@ -149,7 +149,11 @@
           </div>
           <div class="modal-body">
             <p class="mb-3">Se publicara esta configuracion con <strong>retain</strong> en MQTT para: <strong id="config-confirm-target"></strong></p>
-            <ul class="mb-0" id="config-confirm-summary"></ul>
+            <ul class="config-confirm-list mb-2" id="config-confirm-summary"></ul>
+            <p class="text-muted fs-xs mb-0">Apagado = se conserva el valor actual del nodo.</p>
+            <div class="form-feedback-custom invalid-custom d-none mt-2" id="config-confirm-error">
+              <i class="bi bi-exclamation-circle-fill"></i> <span></span>
+            </div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn-custom btn-custom-light" data-bs-dismiss="modal" id="config-btn-cancelar">Cancelar</button>

@@ -2835,6 +2835,35 @@ span.flatpickr-weekday {
     cursor: not-allowed;
 }
 
+/* Lista de parametros en el modal de "Confirmar y enviar" de Configuracion
+   (ver configuracion.html / dashboard.js, configRenderConfirmRow()): cada
+   fila tiene a la izquierda el switch "Enviar" (ancho fijo) que decide si
+   ese parametro viaja en el envio, y a la derecha el texto con el valor
+   propuesto (o "sin cambios" si el switch esta apagado). */
+.config-confirm-list {
+    list-style: none;
+    padding-left: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.config-confirm-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.config-confirm-toggle {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+}
+
+.config-confirm-row-text {
+    font-size: 0.875rem;
+}
+
 /* Input group styles */
 .input-group-custom {
     position: relative;

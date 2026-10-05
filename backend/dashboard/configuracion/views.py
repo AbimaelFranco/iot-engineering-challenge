@@ -136,47 +136,78 @@ def configuracion_ack_latest(request):
     return JsonResponse({"acks": acks, "lastEpochMs": last_epoch_ms})
 
 
+# Cada grupo es lo que el switch "Enviar" de configuracion.html habilita o
+# no (ver config-include-<grupo> en el template y configReadForm() en
+# dashboard.js): si el operador lo deja apagado, ese campo (o par de
+# campos, en temp/hum) no se toca para ningun nodo objetivo - cada nodo
+# conserva el valor que ya tenia (ver configuracion_actualizar()).
+CONFIG_FIELD_GROUPS = {
+    "temp": ("temp_min", "temp_max"),
+    "hum": ("hum_min", "hum_max"),
+    "buzzer": ("buzzer_enabled",),
+    "visual_alarm": ("visual_alarm_enabled",),
+    "fan": ("fan_enabled",),
+    "fan_manual": ("fan_manual_enabled",),
+}
+
+
 def _parse_config_payload(data):
     """Valida el payload JSON recibido del formulario. Devuelve
-    ((config_dict, target_node_ids), error_msg); el primer elemento es None
+    ((new_values, target_node_ids), error_msg); el primer elemento es None
     si error_msg no es None (y viceversa).
+
+    new_values solo trae los campos de los grupos marcados con
+    "include_<grupo>": true (ver CONFIG_FIELD_GROUPS) - los grupos
+    apagados ni se validan ni se incluyen, porque configuracion_actualizar()
+    los va a resolver con el valor que cada nodo objetivo ya tenia, no con
+    lo que haya quedado en el formulario (que para "Ambos" es solo un
+    punto de partida visual, ver configFillForm() en dashboard.js).
     """
     node_target = data.get("node_target")
     if node_target not in ("nodo-a", "nodo-b", "ambos"):
         return None, "node_target invalido."
 
-    try:
-        temp_min = float(data["temp_min"])
-        temp_max = float(data["temp_max"])
-        hum_min = float(data["hum_min"])
-        hum_max = float(data["hum_max"])
-    except (KeyError, TypeError, ValueError):
-        return None, "Los limites de temperatura/humedad deben ser numericos."
+    include = {group: bool(data.get("include_" + group)) for group in CONFIG_FIELD_GROUPS}
+    if not any(include.values()):
+        return None, "Selecciona al menos un parametro para incluir en el envio."
 
-    buzzer_enabled = bool(data.get("buzzer_enabled"))
-    visual_alarm_enabled = bool(data.get("visual_alarm_enabled"))
-    fan_enabled = bool(data.get("fan_enabled"))
-    fan_manual_enabled = bool(data.get("fan_manual_enabled"))
+    new_values = {}
 
-    t_lo, t_hi = TEMP_PHYSICAL_RANGE
-    h_lo, h_hi = HUM_PHYSICAL_RANGE
-    if not (t_lo <= temp_min < temp_max <= t_hi):
-        return None, f"Temperatura: minima < maxima, ambas entre {t_lo:.0f} y {t_hi:.0f} C."
-    if not (h_lo <= hum_min < hum_max <= h_hi):
-        return None, f"Humedad: minima < maxima, ambas entre {h_lo:.0f}% y {h_hi:.0f}%."
+    if include["temp"]:
+        try:
+            temp_min = float(data["temp_min"])
+            temp_max = float(data["temp_max"])
+        except (KeyError, TypeError, ValueError):
+            return None, "Los limites de temperatura deben ser numericos."
+        t_lo, t_hi = TEMP_PHYSICAL_RANGE
+        if not (t_lo <= temp_min < temp_max <= t_hi):
+            return None, f"Temperatura: minima < maxima, ambas entre {t_lo:.0f} y {t_hi:.0f} C."
+        new_values["temp_min"] = temp_min
+        new_values["temp_max"] = temp_max
 
-    config = {
-        "temp_min": temp_min,
-        "temp_max": temp_max,
-        "hum_min": hum_min,
-        "hum_max": hum_max,
-        "buzzer_enabled": buzzer_enabled,
-        "visual_alarm_enabled": visual_alarm_enabled,
-        "fan_enabled": fan_enabled,
-        "fan_manual_enabled": fan_manual_enabled,
-    }
+    if include["hum"]:
+        try:
+            hum_min = float(data["hum_min"])
+            hum_max = float(data["hum_max"])
+        except (KeyError, TypeError, ValueError):
+            return None, "Los limites de humedad deben ser numericos."
+        h_lo, h_hi = HUM_PHYSICAL_RANGE
+        if not (h_lo <= hum_min < hum_max <= h_hi):
+            return None, f"Humedad: minima < maxima, ambas entre {h_lo:.0f}% y {h_hi:.0f}%."
+        new_values["hum_min"] = hum_min
+        new_values["hum_max"] = hum_max
+
+    if include["buzzer"]:
+        new_values["buzzer_enabled"] = bool(data.get("buzzer_enabled"))
+    if include["visual_alarm"]:
+        new_values["visual_alarm_enabled"] = bool(data.get("visual_alarm_enabled"))
+    if include["fan"]:
+        new_values["fan_enabled"] = bool(data.get("fan_enabled"))
+    if include["fan_manual"]:
+        new_values["fan_manual_enabled"] = bool(data.get("fan_manual_enabled"))
+
     targets = NODE_IDS if node_target == "ambos" else [node_target]
-    return (config, targets), None
+    return (new_values, targets), None
 
 
 @require_POST
@@ -184,6 +215,17 @@ def configuracion_actualizar(request):
     """Publica la configuracion recibida (retained + QoS1, ver
     configuracion/mqtt_publish.py) en config/<node_id> para cada nodo
     objetivo, y deja constancia en node_config_log.
+
+    Solo los grupos marcados para incluir (ver _parse_config_payload) se
+    actualizan; para cada nodo objetivo, el resto de los campos se toma de
+    NodeConfigLog.latest_config(node_id) - la configuracion que ESE nodo ya
+    tenia, no la de otro nodo ni la que haya quedado visible en el
+    formulario. Asi, enviar "Ambos" marcando solo, por ejemplo, el
+    ventilador manual aplica ese mismo cambio a los dos nodos sin alterar
+    los umbrales u otros actuadores que cada uno tuviera configurados de
+    forma distinta. El payload publicado y guardado es siempre completo
+    (los 8 campos): el firmware rechaza un config/<node_id> incompleto
+    (ver handle_config_event() en mqtt_telemetry.c).
 
     "Segunda confirmacion" (el cuadro de dialogo antes de enviar) vive del
     lado del cliente (ver configuracion.html / dashboard.js); este endpoint
@@ -197,10 +239,12 @@ def configuracion_actualizar(request):
     parsed, error = _parse_config_payload(data)
     if error:
         return JsonResponse({"ok": False, "error": error}, status=400)
-    config, targets = parsed
+    new_values, targets = parsed
 
     results = []
     for node_id in targets:
+        config = {**NodeConfigLog.latest_config(node_id), **new_values}
+
         try:
             topic, payload_raw = publish_node_config(node_id, config)
         except MqttPublishError as exc:
@@ -218,6 +262,7 @@ def configuracion_actualizar(request):
             "node_id": node_id,
             "topic": topic,
             "sent_at": sent_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "applied": config,
         })
 
     return JsonResponse({"ok": True, "results": results})

@@ -52,33 +52,57 @@ class NodeConfigLog(models.Model):
         db_table = "node_config_log"
 
     @classmethod
+    def latest_config(cls, node_id):
+        """Toda la configuracion vigente de node_id (los 8 campos, no solo
+        temp/hum - ver latest_thresholds mas abajo para esa variante), o
+        DEFAULT_CONFIG si todavia no se publico ninguna.
+
+        Usado por configuracion/views.py (configuracion_actualizar) para
+        fusionar, campo por campo, lo que el operador decide actualizar en
+        una publicacion nueva con lo que el nodo ya tenia: el firmware
+        exige que el payload de config/<node_id> traiga los 8 campos
+        siempre (ver handle_config_event() en mqtt_telemetry.c), asi que
+        un envio parcial (p.ej. solo "ventilador manual") igual debe armar
+        un payload completo por nodo, usando aqui el valor ya vigente de
+        ese nodo para todo lo que el operador no marco para actualizar.
+        """
+        row = (
+            cls.objects.filter(node_id=node_id)
+            .order_by("-sent_at")
+            .values(
+                "temp_min", "temp_max", "hum_min", "hum_max",
+                "buzzer_enabled", "visual_alarm_enabled",
+                "fan_enabled", "fan_manual_enabled",
+            )
+            .first()
+        )
+        if not row:
+            return dict(DEFAULT_CONFIG)
+        return {
+            "temp_min": float(row["temp_min"]),
+            "temp_max": float(row["temp_max"]),
+            "hum_min": float(row["hum_min"]),
+            "hum_max": float(row["hum_max"]),
+            "buzzer_enabled": row["buzzer_enabled"],
+            "visual_alarm_enabled": row["visual_alarm_enabled"],
+            "fan_enabled": row["fan_enabled"],
+            "fan_manual_enabled": row["fan_manual_enabled"],
+        }
+
+    @classmethod
     def latest_thresholds(cls, node_id="nodo-a"):
         """Ultimos umbrales de alerta (temp/hum min/max) publicados para
         node_id, o DEFAULT_CONFIG si todavia no se publico ninguno.
 
         Usado por historico/views.py y tiemporeal/views.py para que la
         linea de alerta de sus graficas refleje lo que de verdad se publico
-        desde Configuracion, en vez de un valor fijo en el codigo. Los dos
-        nodos pueden en teoria tener configuraciones distintas (el topic es
-        config/<node_id>, no uno compartido), pero esas vistas grafican un
-        unico par de lineas para ambos nodos a la vez: se usa nodo-a como
-        referencia, que es consistente con que "Ambos nodos" (la opcion por
-        defecto en Configuracion) mantenga a los dos sincronizados.
+        desde Configuracion, en vez de un valor fijo en el codigo. Es un
+        subconjunto de latest_config() (que trae los 8 campos); se separa
+        porque esas dos vistas solo necesitan temp/hum y no deberian
+        acoplarse a los campos de buzzer/LED/ventilador.
         """
-        row = (
-            cls.objects.filter(node_id=node_id)
-            .order_by("-sent_at")
-            .values("temp_min", "temp_max", "hum_min", "hum_max")
-            .first()
-        )
-        if not row:
-            return {k: DEFAULT_CONFIG[k] for k in ("temp_min", "temp_max", "hum_min", "hum_max")}
-        return {
-            "temp_min": float(row["temp_min"]),
-            "temp_max": float(row["temp_max"]),
-            "hum_min": float(row["hum_min"]),
-            "hum_max": float(row["hum_max"]),
-        }
+        config = cls.latest_config(node_id)
+        return {k: config[k] for k in ("temp_min", "temp_max", "hum_min", "hum_max")}
 
 
 class MqttLog(models.Model):

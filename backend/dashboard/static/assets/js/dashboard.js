@@ -1359,6 +1359,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const configBtnConfirmar = document.getElementById('config-btn-confirmar');
         const configConfirmTarget = document.getElementById('config-confirm-target');
         const configConfirmSummary = document.getElementById('config-confirm-summary');
+        const configConfirmError = document.getElementById('config-confirm-error');
         const configModalEl = document.getElementById('config-confirm-modal');
         const configModal = (configModalEl && window.bootstrap) ? new bootstrap.Modal(configModalEl) : null;
 
@@ -1436,6 +1437,65 @@ document.addEventListener('DOMContentLoaded', function () {
             return null;
         }
 
+        // Grupos que el modal de "Confirmar y enviar" ofrece incluir o no
+        // (ver configRenderConfirmRow()/configBtnConfirmar mas abajo). La
+        // "key" de cada grupo debe coincidir con el sufijo que espera el
+        // backend en "include_<key>" (ver CONFIG_FIELD_GROUPS en
+        // configuracion/views.py).
+        const configConfirmGroups = [
+            {
+                key: 'temp', label: 'Temperatura',
+                valueText: function (p) { return p.temp_min + '&deg;C - ' + p.temp_max + '&deg;C'; }
+            },
+            {
+                key: 'hum', label: 'Humedad',
+                valueText: function (p) { return p.hum_min + '% - ' + p.hum_max + '%'; }
+            },
+            {
+                key: 'buzzer', label: 'Alarma sonora',
+                valueText: function (p) { return p.buzzer_enabled ? 'Activada' : 'Desactivada'; }
+            },
+            {
+                key: 'visual_alarm', label: 'Alarma visual',
+                valueText: function (p) { return p.visual_alarm_enabled ? 'Activada' : 'Desactivada'; }
+            },
+            {
+                key: 'fan', label: 'Ventilador por umbral',
+                valueText: function (p) { return p.fan_enabled ? 'Activado' : 'Desactivado'; }
+            },
+            {
+                key: 'fan_manual', label: 'Ventilador manual',
+                valueText: function (p) { return p.fan_manual_enabled ? 'Encendido (forzado)' : 'Apagado'; }
+            }
+        ];
+
+        const CONFIG_CONFIRM_SIN_CAMBIOS = 'sin cambios (cada nodo conserva su valor actual)';
+
+        // Cada fila trae su propio switch "Enviar": arranca encendido (se
+        // manda todo por defecto, igual que antes de que existiera esta
+        // opcion) y el operador apaga el/los parametros que no quiere
+        // tocar en este envio especifico.
+        function configRenderConfirmRow(group, payload) {
+            return '<li class="config-confirm-row" data-group="' + group.key + '">' +
+                '<div class="config-confirm-toggle">' +
+                '<input class="form-switch-input-custom config-confirm-include" type="checkbox" ' +
+                'id="config-confirm-include-' + group.key + '" checked>' +
+                '<label class="visually-hidden" for="config-confirm-include-' + group.key + '">Enviar ' + group.label + '</label>' +
+                '</div>' +
+                '<div class="config-confirm-row-text"><strong>' + group.label + ':</strong> ' +
+                '<span class="config-confirm-value">' + group.valueText(payload) + '</span></div>' +
+                '</li>';
+        }
+
+        function configUpdateConfirmRowText(li, group, payload) {
+            const checkbox = li.querySelector('.config-confirm-include');
+            const valueSpan = li.querySelector('.config-confirm-value');
+            if (!checkbox || !valueSpan) {
+                return;
+            }
+            valueSpan.innerHTML = checkbox.checked ? group.valueText(payload) : CONFIG_CONFIRM_SIN_CAMBIOS;
+        }
+
         let configPendingPayload = null;
 
         if (configBtnActualizar) {
@@ -1456,14 +1516,30 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (configConfirmTarget) {
                     configConfirmTarget.textContent = configNodeLabels[payload.node_target] || payload.node_target;
                 }
+                if (configConfirmError) {
+                    configConfirmError.classList.add('d-none');
+                }
                 if (configConfirmSummary) {
-                    configConfirmSummary.innerHTML =
-                        '<li>Temperatura: ' + payload.temp_min + '&deg;C - ' + payload.temp_max + '&deg;C</li>' +
-                        '<li>Humedad: ' + payload.hum_min + '% - ' + payload.hum_max + '%</li>' +
-                        '<li>Alarma sonora: ' + (payload.buzzer_enabled ? 'Activada' : 'Desactivada') + '</li>' +
-                        '<li>Alarma visual: ' + (payload.visual_alarm_enabled ? 'Activada' : 'Desactivada') + '</li>' +
-                        '<li>Ventilador por umbral: ' + (payload.fan_enabled ? 'Activado' : 'Desactivado') + '</li>' +
-                        '<li>Ventilador manual: ' + (payload.fan_manual_enabled ? 'Encendido (forzado)' : 'Apagado') + '</li>';
+                    // Arma una fila por parametro, cada una con su propio
+                    // switch "Enviar" (ver configRenderConfirmRow()): la
+                    // decision de que se manda vive aqui, en el modal, no
+                    // en la pagina principal. Todas arrancan encendidas.
+                    configConfirmSummary.innerHTML = configConfirmGroups
+                        .map(function (group) { return configRenderConfirmRow(group, payload); })
+                        .join('');
+
+                    configConfirmGroups.forEach(function (group) {
+                        const li = configConfirmSummary.querySelector('li[data-group="' + group.key + '"]');
+                        const checkbox = li ? li.querySelector('.config-confirm-include') : null;
+                        if (checkbox) {
+                            checkbox.addEventListener('change', function () {
+                                configUpdateConfirmRowText(li, group, payload);
+                                if (configConfirmError) {
+                                    configConfirmError.classList.add('d-none');
+                                }
+                            });
+                        }
+                    });
                 }
 
                 if (configModal) {
@@ -1512,6 +1588,34 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (!configPendingPayload) {
                     return;
                 }
+
+                // Lee el switch "Enviar" de cada fila tal como quedo en el
+                // modal (el operador pudo apagar alguno despues de abrirlo)
+                // y lo traduce a los "include_<grupo>" que espera el
+                // backend (ver CONFIG_FIELD_GROUPS en configuracion/views.py).
+                const includeValues = {};
+                let anyIncluded = false;
+                configConfirmGroups.forEach(function (group) {
+                    const checkbox = document.getElementById('config-confirm-include-' + group.key);
+                    const checked = !!(checkbox && checkbox.checked);
+                    includeValues['include_' + group.key] = checked;
+                    anyIncluded = anyIncluded || checked;
+                });
+
+                if (!anyIncluded) {
+                    if (configConfirmError) {
+                        configConfirmError.classList.remove('d-none');
+                        configConfirmError.querySelector('span').textContent =
+                            'Activa el switch "Enviar" de al menos un parametro.';
+                    }
+                    return;
+                }
+                if (configConfirmError) {
+                    configConfirmError.classList.add('d-none');
+                }
+
+                const payloadToSend = Object.assign({}, configPendingPayload, includeValues);
+
                 configSetSending(true);
                 fetch(window.CONFIG_ACTUALIZAR_URL, {
                     method: 'POST',
@@ -1519,7 +1623,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': configGetCsrfToken()
                     },
-                    body: JSON.stringify(configPendingPayload)
+                    body: JSON.stringify(payloadToSend)
                 })
                     .then(function (res) {
                         return res.json().then(function (data) { return { ok: res.ok, data: data }; });

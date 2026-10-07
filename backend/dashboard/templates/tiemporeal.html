@@ -409,8 +409,10 @@
 {% endblock %}
 
 {% block extra_js %}
+{% load l10n %}
 {{ tiemporeal_chart_data|json_script:"tiemporeal-chart-data" }}
 <script>
+  {% localize off %}
   window.TIEMPOREAL_THRESHOLDS = {
     tempMinA: {{ temp_min_a }},
     tempMaxA: {{ temp_max_a }},
@@ -421,6 +423,7 @@
     humMinB: {{ hum_min_b }},
     humMaxB: {{ hum_max_b }}
   };
+  {% endlocalize %}
   window.TIEMPOREAL_LATEST_URL = "{% url 'tiemporeal_latest' %}";
 </script>
 {% endblock %}

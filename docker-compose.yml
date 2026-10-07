@@ -6,3 +6,13 @@ services:
     env_file:
       - ./backend/.env
     restart: unless-stopped
+
+  dashboard:
+    build: ./backend/dashboard
+    image: iot-challenge-dashboard:latest
+    container_name: dashboard
+    env_file:
+      - ./backend/dashboard/.env
+    ports:
+      - "8000:8000"
+    restart: unless-stopped

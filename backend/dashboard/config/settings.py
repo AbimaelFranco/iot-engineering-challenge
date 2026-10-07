@@ -45,6 +45,11 @@ ALLOWED_HOSTS = [
     h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",") if h.strip()
 ]
 
+# Render termina TLS en su proxy y reenvia al contenedor por HTTP plano con
+# X-Forwarded-Proto: sin esto, request.is_secure() siempre da False detras
+# del proxy aunque el visitante use https.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 
 # Application definition
 
@@ -66,6 +71,10 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # Sirve STATIC_ROOT directamente desde gunicorn (sin nginx delante en
+    # Render): debe ir justo despues de SecurityMiddleware, por requisito
+    # de whitenoise.
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -179,6 +188,25 @@ USE_TZ = False
 
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
+# Destino de "collectstatic" (ver entrypoint.sh): whitenoise sirve desde
+# aqui, no desde STATICFILES_DIRS.
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    # Solo comprime (gzip/brotli) en disco durante collectstatic, sin
+    # depender de un CDN/nginx delante del contenedor. No se usa la
+    # variante "Manifest" (que ademas hashea nombres de archivo para cache
+    # inmutable): bootstrap.min.css/bootstrap.bundle.min.js vienen
+    # vendoreados (static/assets/libs/bootstrap/) sin sus .map, y el
+    # post_process de esa variante aborta el build entero al no poder
+    # resolver esas referencias.
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+    },
+}
 
 
 # Email

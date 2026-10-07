@@ -1,0 +1,11 @@
+.venv/
+.env
+.env.example
+__pycache__/
+*.pyc
+.git
+db.sqlite3
+staticfiles/
+# Plantilla de arranque de AdminLTE sin usar por la app real (ver
+# config/settings.py TEMPLATES/STATICFILES_DIRS, que no la referencian).
+plantilla/

@@ -3,3 +3,5 @@ django-jazzmin
 python-dotenv
 psycopg2-binary
 paho-mqtt
+gunicorn
+whitenoise

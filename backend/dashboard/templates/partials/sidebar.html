@@ -46,6 +46,7 @@
             <span>Datos historicos</span>
           </a>
         </li>
+        {% if user.is_staff %}
         <li class="sidebar-menu-item">
           <a href="{% url 'configuracion' %}"
             class="sidebar-menu-link{% if request.resolver_match.url_name == 'configuracion' %} active{% endif %}"
@@ -54,12 +55,7 @@
             <span>Configuracion</span>
           </a>
         </li>
-        <li class="sidebar-menu-item">
-          <a href="#" class="sidebar-menu-link" id="menu-terminal" title="Terminal">
-            <i class="bi bi-terminal-fill"></i>
-            <span>Terminal</span>
-          </a>
-        </li>
+        {% endif %}
       </ul>
     </div>
   </div>

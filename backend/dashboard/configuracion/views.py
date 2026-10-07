@@ -1,7 +1,9 @@
 import json
 from datetime import datetime, timezone
+from functools import wraps
 
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_GET, require_POST
@@ -10,6 +12,21 @@ from .models import DEFAULT_CONFIG, MqttLog, NodeConfigLog
 from .mqtt_publish import MqttPublishError, publish_node_config
 
 NODE_IDS = ["nodo-a", "nodo-b"]
+
+
+def staff_required(view_func):
+    """Exige sesion iniciada (redirige a login, igual que login_required)
+    y ademas staff status: Configuracion publica por MQTT hacia los nodos
+    (ver mqtt_publish.py), asi que un usuario sin privilegios de staff no
+    debe poder verla ni modificarla.
+    """
+    @wraps(view_func)
+    @login_required
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_staff:
+            raise PermissionDenied
+        return view_func(request, *args, **kwargs)
+    return wrapper
 
 # Topics de confirmacion (ver Documentation/README.md, config/.../ack).
 # telemetry-worker.py ya los guarda en mqtt_log sin ningun cambio de su
@@ -83,7 +100,7 @@ def _parse_since(raw):
     return datetime.fromtimestamp(since_ms / 1000, tz=timezone.utc).replace(tzinfo=None)
 
 
-@login_required
+@staff_required
 def configuracion(request):
     return render(request, "configuracion.html", {
         "node_config": _latest_config_by_node(),
@@ -94,7 +111,7 @@ def configuracion(request):
     })
 
 
-@login_required
+@staff_required
 @require_GET
 def configuracion_ack_latest(request):
     """Acks nuevos (config/.../ack) desde la ultima vez que el cliente
@@ -213,7 +230,7 @@ def _parse_config_payload(data):
     return (new_values, targets), None
 
 
-@login_required
+@staff_required
 @require_POST
 def configuracion_actualizar(request):
     """Publica la configuracion recibida (retained + QoS1, ver

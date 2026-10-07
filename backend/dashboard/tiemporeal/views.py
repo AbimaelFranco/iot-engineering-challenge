@@ -1,4 +1,3 @@
-from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 
 from django.contrib.auth.decorators import login_required
@@ -71,20 +70,24 @@ def _series_promedio(readings, field):
     # Nodo A y Nodo B publican cada uno por su cuenta (mismo periodo de
     # ~60s, ver READ_PERIOD_MS en firmware/ESP32/main/ESP32.c) pero sin
     # relojes sincronizados entre si, asi que sus timestamps no coinciden
-    # exactamente. Se agrupan por minuto para poder promediar ambos nodos
-    # en cada punto; los minutos en los que solo reporto un nodo se omiten
-    # (no hay nada que promediar).
-    buckets = defaultdict(dict)
-    for r in readings:
-        key = r["reading_time"].replace(second=0, microsecond=0)
-        buckets[key][r["node_id"]] = r[field]
-
+    # exactamente. Agrupar por minuto (como se hacia antes) dejaba el
+    # promedio con huecos cuando un nodo caia en el minuto siguiente, y al
+    # retomar coincidencias generaba picos falsos (se promediaba una
+    # lectura nueva de un nodo con una vieja del otro que ya no era
+    # representativa). En vez de eso, se mantiene el ultimo valor conocido
+    # de cada nodo y se emite un punto de promedio en cada lectura (de
+    # cualquiera de los dos nodos) una vez que ambos ya reportaron al
+    # menos una vez, combinando siempre el valor mas reciente de cada uno.
+    # Esto da una linea continua y evita los picos por desalineacion de
+    # relojes.
+    last_value = {}
     series = []
-    for key in sorted(buckets):
-        values = buckets[key]
-        if len(values) < len(NODE_IDS):
+    for r in readings:
+        last_value[r["node_id"]] = r[field]
+        if len(last_value) < len(NODE_IDS):
             continue
-        series.append([_to_epoch_ms(key), round(sum(values.values()) / len(values), 1)])
+        avg = sum(last_value.values()) / len(last_value)
+        series.append([_to_epoch_ms(r["reading_time"]), round(avg, 1)])
     return series
 
 

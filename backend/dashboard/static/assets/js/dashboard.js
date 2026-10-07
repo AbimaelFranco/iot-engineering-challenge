@@ -816,12 +816,14 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        // Rastrea la ultima lectura de cada nodo dentro del minuto "en curso"
-        // para poder calcular el punto de Promedio en vivo igual que
-        // _series_promedio en el servidor: solo cuando ambos nodos
-        // reportaron dentro del mismo minuto.
-        let tiemporealPendingMinute = null;
-        let tiemporealPendingReadings = {};
+        // Rastrea el ultimo valor conocido de cada nodo (igual que
+        // _series_promedio en el servidor, ver tiemporeal/views.py): como los
+        // nodos no tienen relojes sincronizados, agrupar por minuto exacto
+        // dejaba huecos y picos falsos cuando una lectura caia en el minuto
+        // siguiente. En vez de eso, cada lectura nueva (de cualquiera de los
+        // dos nodos) actualiza el promedio combinando el valor mas reciente
+        // conocido de cada uno, dando una linea continua.
+        let tiemporealLastReadings = {};
 
         function tiemporealProcessPoint(nodeId, epochMs, temp, hum) {
             const seriesIndex = nodeId === 'nodo-a' ? 0 : 1;
@@ -834,16 +836,11 @@ document.addEventListener('DOMContentLoaded', function () {
             tiemporealAppendPoint(tiemporealPrimaryChart, seriesIndex, epochMs, temp);
             tiemporealAppendPoint(tiemporealSecondaryChart, seriesIndex, epochMs, hum);
 
-            const minuteKey = Math.floor(epochMs / 60000);
-            if (tiemporealPendingMinute !== minuteKey) {
-                tiemporealPendingMinute = minuteKey;
-                tiemporealPendingReadings = {};
-            }
-            tiemporealPendingReadings[nodeId] = { temp: temp, hum: hum };
+            tiemporealLastReadings[nodeId] = { temp: temp, hum: hum };
 
-            if (tiemporealPendingReadings['nodo-a'] && tiemporealPendingReadings['nodo-b']) {
-                const avgTemp = Math.round(((tiemporealPendingReadings['nodo-a'].temp + tiemporealPendingReadings['nodo-b'].temp) / 2) * 10) / 10;
-                const avgHum = Math.round(((tiemporealPendingReadings['nodo-a'].hum + tiemporealPendingReadings['nodo-b'].hum) / 2) * 10) / 10;
+            if (tiemporealLastReadings['nodo-a'] && tiemporealLastReadings['nodo-b']) {
+                const avgTemp = Math.round(((tiemporealLastReadings['nodo-a'].temp + tiemporealLastReadings['nodo-b'].temp) / 2) * 10) / 10;
+                const avgHum = Math.round(((tiemporealLastReadings['nodo-a'].hum + tiemporealLastReadings['nodo-b'].hum) / 2) * 10) / 10;
                 tiemporealAppendPoint(tiemporealPrimaryChart, 2, epochMs, avgTemp);
                 tiemporealAppendPoint(tiemporealSecondaryChart, 2, epochMs, avgHum);
             }
@@ -861,11 +858,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(function (res) { return res.json(); })
                 .then(function (data) {
                     const hasNewPoints = (data.tempSeriesA && data.tempSeriesA.length) || (data.tempSeriesB && data.tempSeriesB.length);
+                    // Las lecturas de ambos nodos deben procesarse en orden
+                    // cronologico real (no todas las de A y luego todas las
+                    // de B) para que el Promedio en vivo se vaya armando con
+                    // timestamps siempre crecientes. Si no, al intercalarse
+                    // lecturas de A y B el eje X del Promedio "retrocede" y
+                    // la linea queda en zigzag.
+                    const pending = [];
                     (data.tempSeriesA || []).forEach(function (point, i) {
-                        tiemporealProcessPoint('nodo-a', point[0], point[1], data.humSeriesA[i][1]);
+                        pending.push({ nodeId: 'nodo-a', epochMs: point[0], temp: point[1], hum: data.humSeriesA[i][1] });
                     });
                     (data.tempSeriesB || []).forEach(function (point, i) {
-                        tiemporealProcessPoint('nodo-b', point[0], point[1], data.humSeriesB[i][1]);
+                        pending.push({ nodeId: 'nodo-b', epochMs: point[0], temp: point[1], hum: data.humSeriesB[i][1] });
+                    });
+                    pending.sort(function (a, b) { return a.epochMs - b.epochMs; });
+                    pending.forEach(function (p) {
+                        tiemporealProcessPoint(p.nodeId, p.epochMs, p.temp, p.hum);
                     });
                     if (data.lastEpochMs != null) {
                         tiemporealSince = data.lastEpochMs;

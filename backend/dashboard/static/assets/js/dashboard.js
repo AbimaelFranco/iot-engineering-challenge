@@ -1720,13 +1720,21 @@ document.addEventListener('DOMContentLoaded', function () {
             let configAckSince = window.CONFIG_ACK_SINCE_INIT || 0;
             let configAckPolling = false;
 
+            // El nodo reporta estos umbrales con la precision flotante cruda
+            // del firmware (ver firmware/ESP32/main/ESP32.c); se redondean a
+            // 1 decimal solo para mostrarlos, sin tocar el valor aplicado.
+            function configAckFormatValue(value) {
+                const num = Number(value);
+                return Number.isFinite(num) ? num.toFixed(1) : value;
+            }
+
             function configAckMessage(ack) {
                 const label = configAckNodeLabels[ack.node_id] || ack.node_id;
                 if (ack.status === 'ok') {
                     if (ack.applied) {
                         return label + ' confirmo la nueva configuracion: ' +
-                            ack.applied.temp_min + '&deg;C - ' + ack.applied.temp_max + '&deg;C, ' +
-                            ack.applied.hum_min + '% - ' + ack.applied.hum_max + '%.';
+                            configAckFormatValue(ack.applied.temp_min) + '&deg;C - ' + configAckFormatValue(ack.applied.temp_max) + '&deg;C, ' +
+                            configAckFormatValue(ack.applied.hum_min) + '% - ' + configAckFormatValue(ack.applied.hum_max) + '%.';
                     }
                     return label + ' confirmo la nueva configuracion.';
                 }

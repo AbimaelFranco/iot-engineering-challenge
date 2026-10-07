@@ -1,24 +1,3 @@
-/*
- * Enlace directo ESP-NOW entre Nodo A y Nodo B (ver diagrama de
- * arquitectura en Documentation/Architecture/), separado del enlace
- * nodo<->plataforma por MQTT (ver mqtt/mqtt_telemetry.c). No abre una
- * conexion propia: reutiliza el radio WiFi que mqtt_telemetry_init() ya
- * deja inicializado y arrancado en modo estacion, asi que este modulo
- * debe inicializarse despues de eso.
- *
- * Este nodo agrega como unico peer la MAC del OTRO nodo: si NODE_ID es
- * "nodo-a" le habla a NODE_B_MAC, si es "nodo-b" le habla a NODE_A_MAC
- * (ambas en secrets.h, ver secrets.example.h). Del lado del envio,
- * espnow_send_emergency_stop() manda "paro de emergencia" a ese peer, y
- * todavia no esta conectada a ningun trigger (p.ej. el pulsador de
- * emergencia, ver emergency_button/emergency_button.c). Del lado de la
- * recepcion si hay trigger: espnow_recv_cb() (el listener que se registra
- * en espnow_init()) detecta ese mismo mensaje viniendo del otro nodo y
- * hace sonar el buzzer local (ver buzzer/buzzer.h) con el mismo patron de
- * alerta que usa el pulsador de emergencia, para que un "paro de
- * emergencia" en cualquiera de los dos nodos se note en ambos.
- */
-
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
@@ -33,17 +12,11 @@
 #include "buzzer/buzzer.h"
 
 #define ESPNOW_EMERGENCY_STOP_MSG "paro de emergencia"
-
-// Mismo patron que usa el pulsador de emergencia local (ver
-// emergency_button/emergency_button.c) para que la alerta se sienta
-// igual sin importar si el "paro de emergencia" se origino en este nodo
-// o llego por ESP-NOW desde el otro.
 #define ESPNOW_EMERGENCY_STOP_PULSE_COUNT 5
 #define ESPNOW_EMERGENCY_STOP_PULSE_ON_MS 100
 #define ESPNOW_EMERGENCY_STOP_PULSE_OFF_MS 100
 
-// MAC del otro nodo (peer): se resuelve una sola vez en espnow_init()
-// segun NODE_ID.
+// MAC del otro nodo (peer)
 static uint8_t s_peer_mac[ESP_NOW_ETH_ALEN];
 
 // Solo informativo: confirma si el peer recibio el ultimo envio o no.
@@ -106,7 +79,13 @@ esp_err_t espnow_init(void)
     }
 
     esp_now_peer_info_t peer = {
-        .channel = 0, // 0 = usar el canal actual de la estacion WiFi
+        // 0 = usar el canal actual de la estacion WiFi. wifi_init_sta()
+        // (ver mqtt/mqtt_telemetry.c) fija ese canal en WIFI_CHANNEL
+        // (secrets.h) apenas arranca el WiFi, incluso si este nodo no
+        // logra asociarse a ningun router, para que ambos nodos queden
+        // siempre en el mismo canal fisico sin importar la conexion a
+        // internet de cada uno.
+        .channel = 0,
         .ifidx = WIFI_IF_STA,
         .encrypt = false,
     };
@@ -126,7 +105,7 @@ esp_err_t espnow_init(void)
 esp_err_t espnow_send_emergency_stop(void)
 {
     esp_err_t err = esp_now_send(s_peer_mac, (const uint8_t *)ESPNOW_EMERGENCY_STOP_MSG,
-                                  strlen(ESPNOW_EMERGENCY_STOP_MSG));
+                                 strlen(ESPNOW_EMERGENCY_STOP_MSG));
     if (err != ESP_OK)
     {
         printf("ERROR enviando \"%s\" por ESP-NOW: %s\n", ESPNOW_EMERGENCY_STOP_MSG, esp_err_to_name(err));

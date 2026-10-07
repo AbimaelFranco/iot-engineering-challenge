@@ -142,11 +142,13 @@ static void evaluate_alarm_thresholds(void)
 // mensaje especifico que lo origino; "reason" se ignora si ok=true.
 static void publish_config_ack(bool ok, double ack_ts, const char *reason)
 {
-    if (!s_mqtt_connected)
-    {
-        return;
-    }
-
+    // A diferencia de mqtt_telemetry_publish()/mqtt_estatus_publish(), aqui
+    // NO se corta si s_mqtt_connected es false: una reconexion breve justo
+    // en este instante (ej. llega el config retained al reconectar) no debe
+    // perder el ack. esp_mqtt_client_publish() con QoS 1 encola el mensaje
+    // en el outbox de esp-mqtt y lo reenvia solo al reconectar, que es
+    // justamente el motivo por el que se eligio QoS 1 aqui (ver comentario
+    // de MQTT_CONFIG_ACK_QOS mas arriba).
     cJSON *root = cJSON_CreateObject();
     cJSON_AddNumberToObject(root, "ts", ack_ts);
     cJSON_AddStringToObject(root, "status", ok ? "ok" : "error");
@@ -334,13 +336,30 @@ static esp_err_t wifi_init_sta(void)
             .ssid = WIFI_SSID,
             .password = WIFI_PASSWORD,
             .threshold.authmode = WIFI_AUTH_WPA2_PSK,
+            .channel = WIFI_CHANNEL,
         },
     };
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
 
-    printf("Conectando a WiFi SSID: %s...\n", WIFI_SSID);
+    // Fija el radio en WIFI_CHANNEL de inmediato, antes de que termine de
+    // resolverse la conexion al router. ESP-NOW comparte este mismo radio
+    // (ver espnow/espnow.c, peer.channel = 0 = "el canal actual"), asi
+    // que si no se fijara aca, un nodo que no logra asociarse a ningun
+    // router quedaria en el canal por defecto (1) en vez de WIFI_CHANNEL,
+    // y no podria escucharse con el otro nodo por ESP-NOW. Si la
+    // asociacion al router si ocurre (y el router esta en WIFI_CHANNEL,
+    // como debe estar configurado), esto no tiene efecto porque el canal
+    // ya va a coincidir.
+    err = esp_wifi_set_channel(WIFI_CHANNEL, WIFI_SECOND_CHAN_NONE);
+    if (err != ESP_OK)
+    {
+        printf("ADVERTENCIA: no se pudo fijar el canal WiFi/ESP-NOW en %d: %s\n",
+               WIFI_CHANNEL, esp_err_to_name(err));
+    }
+
+    printf("Conectando a WiFi SSID: %s (canal %d)...\n", WIFI_SSID, WIFI_CHANNEL);
 
     EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
                                            pdFALSE, pdFALSE, portMAX_DELAY);

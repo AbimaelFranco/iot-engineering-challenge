@@ -1,6 +1,4 @@
 /*
- * Manejo del sensor AHT10 (temperatura/humedad) por I2C.
- *
  * I2C:   SDA = GPIO21, SCL = GPIO22
  * AHT10: dirección definida por nodo en secrets.h (AHT10_I2C_ADDR)
  */

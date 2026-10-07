@@ -1,0 +1,27 @@
+# Plantilla de valores para el Nodo B.
+# Copia este archivo como "nodo_b.txt" en esta misma carpeta y completa los
+# valores reales de tu Nodo B. "nodo_b.txt" esta en .gitignore y NUNCA debe
+# subirse al repositorio.
+#
+# Formato: una linea por parametro, "CLAVE=valor" (sin comillas). Las lineas
+# que empiezan con "#" son comentarios. El resto de la linea despues del "="
+# se toma tal cual (incluyendo "#" o espacios si los hubiera en el valor).
+#
+# Detalle de cada campo: ver firmware/ESP32/main/secrets.example.h
+
+NODE_ID=nodo-b
+AHT10_I2C_ADDR=0x39
+
+WIFI_SSID=SSID_DE_TU_RED
+WIFI_PASSWORD=PASSWORD_DE_TU_RED
+WIFI_CHANNEL=6
+
+MQTT_BROKER_URL=mqtts://TU_INSTANCIA.hivemq.cloud:8883
+MQTT_USERNAME=usuario_mqtt_nodo_b
+MQTT_PASSWORD=password_mqtt_nodo_b
+
+# MAC de estacion WiFi de cada nodo (identicas en nodo_a.txt y nodo_b.txt).
+# Se obtienen encendiendo cada ESP32 y leyendo la MAC que imprime por
+# consola al arrancar (ver secrets.example.h).
+NODE_A_MAC=00:00:00:00:00:00
+NODE_B_MAC=00:00:00:00:00:00

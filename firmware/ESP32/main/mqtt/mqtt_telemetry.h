@@ -16,8 +16,14 @@
 // esos actuadores de forma fija cuando la lectura del AHT10 quede fuera
 // de los umbrales configurados (ver evaluate_alarm_thresholds() en
 // mqtt_telemetry.c).
-// Es fatal (propaga error) si falla WiFi o la inicialización del cliente
-// MQTT; si solo falla la sincronización de hora, se avisa pero se continúa.
+// Propaga error si falla la conexión WiFi o la inicialización del
+// cliente MQTT (el caller en ESP32.c lo trata como no fatal: el nodo
+// sigue sin telemetría/configuración remota); si solo falla la
+// sincronización de hora, se avisa pero se continúa. En cualquier caso,
+// el radio WiFi queda arriba y fijado en WIFI_CHANNEL (ver
+// secrets.example.h) antes de intentar conectar, para que el enlace
+// ESP-NOW hacia el otro nodo (ver espnow/espnow.c) siga funcionando
+// aunque esta conexión falle.
 esp_err_t mqtt_telemetry_init(void);
 
 // Arma el payload JSON de telemetría (ver formato de mensajes en

@@ -20,6 +20,24 @@
 #define WIFI_SSID "SSID_DE_TU_RED"
 #define WIFI_PASSWORD "PASSWORD_DE_TU_RED"
 
+// Canal WiFi fijo (1-13) que deben compartir AMBOS nodos, sin importar si
+// alguno (o ninguno) tiene conexion a internet. ESP-NOW reutiliza el
+// mismo radio que la conexion WiFi (ver espnow/espnow.c), asi que ambos
+// nodos deben quedar en el MISMO canal fisico para poder escucharse; si
+// cada uno terminara en un canal distinto (por ejemplo porque se conectan
+// a routers distintos, o porque uno no logra asociarse a ningun router y
+// cae en el canal por defecto), ESP-NOW deja de funcionar entre ellos sin
+// importar que la MAC configurada en NODE_A_MAC/NODE_B_MAC sea correcta.
+// Requisitos para que esto funcione:
+// - Este valor debe ser IDENTICO en el secrets.h de los dos nodos.
+// - El/los router(s) WiFi a los que se conecte cada nodo deben tener
+//   canal FIJO (deshabilitar seleccion automatica de canal) en este mismo
+//   numero.
+// - wifi_init_sta() (ver mqtt/mqtt_telemetry.c) fija el radio en este
+//   canal apenas arranca el WiFi, antes de intentar conectar, para que
+//   ESP-NOW siga funcionando aunque la asociacion al router falle.
+#define WIFI_CHANNEL 6
+
 // Broker HiveMQ Cloud (TLS, puerto 8883)
 #define MQTT_BROKER_URL "mqtts://TU_INSTANCIA.hivemq.cloud:8883"
 #define MQTT_USERNAME "usuario_mqtt"

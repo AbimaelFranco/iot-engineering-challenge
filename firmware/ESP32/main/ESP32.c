@@ -18,55 +18,46 @@
 
 void app_main(void)
 {
+
     printf("\n=== " NODE_ID " - AHT10 + MQTT ===\n\n");
 
-    // No es fatal si falla: seguimos sin señal visual de alarma, pero el
-    // resto del nodo (telemetría/MQTT) no depende de esto.
+    // configuracion de alarma visual
     if (led_alarm_init() != ESP_OK)
     {
         printf("No se pudo inicializar la alarma visual (GPIO2), se continua sin ella.\n");
     }
 
-    // No es fatal si falla: seguimos sin alarma sonora, pero el resto del
-    // nodo (telemetría/MQTT) no depende de esto.
+    // configuracion de alarma auditiva
     if (buzzer_init() != ESP_OK)
     {
         printf("No se pudo inicializar el buzzer (GPIO32), se continua sin el.\n");
     }
 
-    // No es fatal si falla: seguimos sin control remoto del ventilador,
-    // pero el resto del nodo (telemetría/MQTT) no depende de esto.
+    // configuracion de ventilador
     if (fan_init() != ESP_OK)
     {
         printf("No se pudo inicializar el ventilador (GPIO23), se continua sin el.\n");
     }
 
-    // Sin WiFi/MQTT no hay forma de publicar telemetría: si falla, se aborta.
+    // inicia wifi y cliente mqtt
     if (mqtt_telemetry_init() != ESP_OK)
     {
-        printf("No se pudo inicializar WiFi/MQTT.\n");
-        return;
+        printf("No se pudo inicializar WiFi/MQTT, se continua sin telemetria/configuracion remota.\n");
     }
 
-    // No es fatal si falla: seguimos sin el enlace directo ESP-NOW hacia
-    // el otro nodo, pero el resto del nodo (telemetría/MQTT) no depende
-    // de esto. Requiere que el WiFi ya este arriba (ver mqtt_telemetry_init()
-    // arriba).
+    // inicia espnow
     if (espnow_init() != ESP_OK)
     {
         printf("No se pudo inicializar ESP-NOW, se continua sin el.\n");
     }
 
-    // No es fatal si falla: seguimos sin pulsador de emergencia, pero el
-    // resto del nodo (telemetría/MQTT) no depende de esto. Va despues de
-    // espnow_init() porque, al presionarlo, manda el aviso de emergencia
-    // al otro nodo por ESP-NOW (ver emergency_button.c).
+    // inicia boton de emergencia
     if (emergency_button_init() != ESP_OK)
     {
         printf("No se pudo inicializar el pulsador de emergencia (GPIO25), se continua sin el.\n");
     }
 
-    // Sin bus I2C no hay forma de hablar con el sensor: si falla, se aborta.
+    // Obliga la detección de comunicacion I2C o aborta
     if (aht10_sensor_init() != ESP_OK)
     {
         printf("No se pudo inicializar el sensor AHT10.\n");
@@ -77,8 +68,7 @@ void app_main(void)
 
     uint32_t seq = 0;
 
-    // Bucle principal: lee, imprime el resultado (o el error), publica por
-    // MQTT si la lectura fue válida, y espera antes de la siguiente medición.
+    // Lecturas y publicaciones de telemetria por MQTT
     while (1)
     {
         float temperature = 0.0f;

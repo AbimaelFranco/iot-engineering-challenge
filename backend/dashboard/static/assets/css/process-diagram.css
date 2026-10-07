@@ -1,0 +1,705 @@
+/* ========================================================================
+   PROCESS DIAGRAM - Secado y Enfriamiento de Azucar (HMI/SCADA mimic)
+   Todas las reglas van prefijadas con "pd-" para no chocar con el resto
+   del sitio. Usa las variables de main.css (paleta/tipografia) como base.
+   ======================================================================== */
+
+.pd-root {
+    --pd-flow-sugar: #F97316;
+    --pd-flow-air-dry: #2E6BE6;
+    --pd-flow-air-cool: #7DD3FC;
+    --pd-flow-steam: #EF4444;
+    --pd-flow-condensate: #166534;
+    --pd-flow-water-plates: #16A34A;
+    --pd-flow-chilled: #6EE7B7;
+    --pd-flow-recirc: #0D9488;
+
+    --pd-panel-bg: var(--brand-forest-dark);
+    --pd-panel-bg-soft: var(--brand-forest-medium);
+    --pd-equip-fill: #EFF3F0;
+    --pd-equip-stroke: #243B30;
+    --pd-equip-fill-running: #FFFFFF;
+    --pd-equip-fault: var(--sys-red);
+}
+
+/* ---------------------------------------------------------------------
+   1. KPI Row
+--------------------------------------------------------------------- */
+.pd-kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.pd-kpi-card {
+    background-color: var(--card-background);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+    padding: 1.1rem 1.35rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.pd-kpi-label {
+    font-size: 0.78rem;
+    color: var(--text-muted-green);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.pd-kpi-value {
+    font-size: 1.65rem;
+    font-weight: 800;
+    color: var(--text-main);
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+}
+
+.pd-kpi-unit {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-muted-green);
+    margin-left: 0.25rem;
+}
+
+/* ---------------------------------------------------------------------
+   2. Toolbar
+--------------------------------------------------------------------- */
+.pd-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    background-color: var(--card-background);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+    padding: 0.9rem 1.1rem;
+    margin-bottom: 1.5rem;
+}
+
+.pd-toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding-right: 0.9rem;
+    margin-right: 0.3rem;
+    border-right: 1px solid var(--border-light);
+}
+
+.pd-toolbar-group:last-child {
+    border-right: none;
+}
+
+.pd-toolbar-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted-green);
+    margin-right: 0.25rem;
+}
+
+.pd-btn {
+    border: 1px solid var(--border-light);
+    background-color: #FFFFFF;
+    color: var(--text-main);
+    border-radius: 50rem;
+    padding: 0.45rem 0.95rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.pd-btn:hover {
+    background-color: var(--border-light);
+}
+
+.pd-btn:focus-visible {
+    outline: 2px solid var(--brand-forest-dark);
+    outline-offset: 2px;
+}
+
+.pd-btn-start {
+    background-color: var(--brand-forest-dark);
+    color: #FFFFFF;
+    border-color: var(--brand-forest-dark);
+}
+
+.pd-btn-start:hover {
+    background-color: var(--brand-forest-medium);
+}
+
+.pd-btn-stop {
+    background-color: var(--sys-red);
+    color: #FFFFFF;
+    border-color: var(--sys-red);
+}
+
+.pd-btn-stop:hover {
+    background-color: #D83333;
+}
+
+.pd-btn-fault {
+    background-color: var(--sys-orange-bg);
+    color: #9A3412;
+    border-color: transparent;
+}
+
+.pd-btn-fault:hover {
+    background-color: #FFDDB3;
+}
+
+.pd-btn[aria-pressed="true"],
+.pd-chip[aria-pressed="true"] {
+    background-color: var(--brand-lime);
+    border-color: var(--brand-lime);
+    color: var(--brand-forest-dark);
+}
+
+.pd-chip {
+    border: 1px solid var(--border-light);
+    background-color: #FFFFFF;
+    color: var(--text-main);
+    border-radius: 50rem;
+    padding: 0.4rem 0.85rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.pd-chip:hover {
+    background-color: var(--border-light);
+}
+
+.pd-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 0.4rem 0.8rem;
+    border-radius: 50rem;
+    background-color: var(--border-light);
+    color: var(--text-muted-green);
+}
+
+.pd-status-pill .pd-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--text-sidebar-muted);
+}
+
+.pd-status-pill[data-state="running"] {
+    background-color: var(--sys-green-bg);
+    color: #15803D;
+}
+
+.pd-status-pill[data-state="running"] .pd-dot {
+    background-color: var(--sys-green);
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25);
+}
+
+.pd-status-pill[data-state="starting"] {
+    background-color: var(--sys-orange-bg);
+    color: #9A3412;
+}
+
+.pd-status-pill[data-state="starting"] .pd-dot {
+    background-color: var(--sys-orange);
+}
+
+.pd-status-pill[data-state="fault"] {
+    background-color: var(--sys-red-bg);
+    color: #B91C1C;
+}
+
+.pd-status-pill[data-state="fault"] .pd-dot {
+    background-color: var(--sys-red);
+}
+
+/* ---------------------------------------------------------------------
+   3. Layout: Diagram + Side Panel
+--------------------------------------------------------------------- */
+.pd-layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+.pd-diagram-card {
+    background-color: var(--card-background);
+    border-radius: var(--radius-xxl);
+    box-shadow: var(--shadow-md);
+    padding: 1.25rem;
+    overflow: hidden;
+}
+
+.pd-diagram-viewport {
+    position: relative;
+    width: 100%;
+    overflow: auto;
+    border-radius: var(--radius-lg);
+    background: linear-gradient(180deg, #F7FAF8 0%, #EEF3F0 100%);
+    touch-action: pan-x pan-y pinch-zoom;
+}
+
+.pd-diagram-viewport svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    min-width: 900px;
+}
+
+/* ---------------------------------------------------------------------
+   4. Equipment base styling
+--------------------------------------------------------------------- */
+.pd-equip {
+    cursor: pointer;
+    outline: none;
+}
+
+.pd-equip .pd-equip-body {
+    fill: var(--pd-equip-fill);
+    stroke: var(--pd-equip-stroke);
+    stroke-width: 2;
+    transition: fill 0.25s ease, stroke 0.25s ease;
+}
+
+.pd-equip .pd-equip-accent {
+    fill: var(--text-sidebar-muted);
+    transition: fill 0.25s ease;
+}
+
+.pd-equip-label {
+    font-size: 13px;
+    font-weight: 700;
+    fill: var(--text-main);
+    pointer-events: none;
+}
+
+.pd-equip-tag {
+    font-size: 10px;
+    font-weight: 700;
+    fill: #FFFFFF;
+    pointer-events: none;
+}
+
+.pd-equip-tag-bg {
+    fill: var(--brand-forest-dark);
+}
+
+.pd-zone-label {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    fill: var(--text-muted-green);
+}
+
+.pd-zone-box {
+    fill: rgba(125, 211, 252, 0.08);
+    stroke: rgba(109, 141, 160, 0.35);
+    stroke-dasharray: 6 5;
+}
+
+/* Hover / focus highlight */
+.pd-equip:hover .pd-equip-body,
+.pd-equip.pd-hover .pd-equip-body {
+    stroke: var(--brand-forest-dark);
+    stroke-width: 3;
+}
+
+.pd-equip:focus-visible .pd-equip-body {
+    stroke: var(--brand-lime);
+    stroke-width: 4;
+}
+
+.pd-equip.pd-selected .pd-equip-body {
+    stroke: var(--brand-forest-dark);
+    stroke-width: 3.5;
+    fill: #FFFFFF;
+}
+
+/* Running state tint */
+.pd-equip[data-status="running"] .pd-equip-body {
+    fill: #E7FBD9;
+    stroke: #4E8F1C;
+}
+
+.pd-equip[data-status="starting"] .pd-equip-body {
+    fill: #FFEFD9;
+    stroke: var(--sys-orange);
+}
+
+.pd-equip[data-status="fault"] .pd-equip-body {
+    fill: var(--sys-red-bg);
+    stroke: var(--pd-equip-fault);
+    animation: pd-fault-blink 0.9s steps(2, start) infinite;
+}
+
+/* Dimmed when a zone filter is active and this equipment isn't included */
+.pd-root[data-zone-filter]:not([data-zone-filter="all"]) .pd-equip {
+    opacity: 0.18;
+    transition: opacity 0.2s ease;
+}
+
+.pd-root[data-zone-filter]:not([data-zone-filter="all"]) .pd-equip.pd-zone-active {
+    opacity: 1;
+}
+
+.pd-root[data-zone-filter]:not([data-zone-filter="all"]) .pd-flow {
+    opacity: 0.12;
+}
+
+.pd-root[data-zone-filter]:not([data-zone-filter="all"]) .pd-flow.pd-zone-active {
+    opacity: 0.9;
+}
+
+@keyframes pd-fault-blink {
+    50% { fill-opacity: 0.35; }
+}
+
+/* ---------------------------------------------------------------------
+   5. Flow lines (marching ants) + arrows
+--------------------------------------------------------------------- */
+.pd-flow {
+    fill: none;
+    stroke-width: 5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.pd-flow-sugar { stroke: var(--pd-flow-sugar); }
+.pd-flow-air-dry { stroke: var(--pd-flow-air-dry); }
+.pd-flow-air-cool { stroke: var(--pd-flow-air-cool); }
+.pd-flow-steam { stroke: var(--pd-flow-steam); stroke-width: 4; }
+.pd-flow-condensate { stroke: var(--pd-flow-condensate); stroke-width: 3.5; }
+.pd-flow-water-plates { stroke: var(--pd-flow-water-plates); stroke-width: 4; }
+.pd-flow-chilled { stroke: var(--pd-flow-chilled); stroke-width: 4; }
+.pd-flow-recirc { stroke: var(--pd-flow-recirc); stroke-width: 3.5; }
+
+.pd-flow-anim {
+    stroke-dasharray: 10 8;
+    animation: pd-flow-march 1.1s linear infinite;
+    animation-play-state: paused;
+}
+
+.pd-root[data-running="true"] .pd-flow-anim {
+    animation-play-state: running;
+}
+
+@keyframes pd-flow-march {
+    to { stroke-dashoffset: -36; }
+}
+
+/* ---------------------------------------------------------------------
+   6. Mechanical motion (SMIL elements are started/stopped from JS via
+   svg.pauseAnimations()/unpauseAnimations(); these CSS rules only cover
+   the pure-CSS pieces: screw chevrons + sugar/bucket fallbacks.
+--------------------------------------------------------------------- */
+.pd-spin {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: pd-rotate var(--pd-rotate-dur, 2.2s) linear infinite;
+    animation-play-state: paused;
+}
+
+.pd-spin-viewbox {
+    transform-box: view-box;
+}
+
+.pd-equip[data-status="running"] .pd-spin,
+.pd-equip[data-status="starting"] .pd-spin {
+    animation-play-state: running;
+}
+
+@keyframes pd-rotate {
+    to { transform: rotate(360deg); }
+}
+
+.pd-screw-strip {
+    animation: pd-screw-scroll 0.6s linear infinite;
+    animation-play-state: paused;
+}
+
+.pd-equip[data-status="running"] .pd-screw-strip {
+    animation-play-state: running;
+}
+
+@keyframes pd-screw-scroll {
+    to { transform: translateX(-24px); }
+}
+
+/* ---------------------------------------------------------------------
+   7. Tooltip
+--------------------------------------------------------------------- */
+.pd-tooltip {
+    position: fixed;
+    z-index: 1200;
+    pointer-events: none;
+    background-color: var(--brand-forest-dark);
+    color: #FFFFFF;
+    padding: 0.4rem 0.7rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.78rem;
+    font-weight: 600;
+    box-shadow: var(--shadow-lg);
+    opacity: 0;
+    transform: translate(-50%, -8px);
+    transition: opacity 0.12s ease;
+    white-space: nowrap;
+}
+
+.pd-tooltip.pd-show {
+    opacity: 1;
+}
+
+/* ---------------------------------------------------------------------
+   8. Side panel (desktop) / Modal body (mobile reuses same markup)
+--------------------------------------------------------------------- */
+.pd-panel {
+    background-color: var(--card-background);
+    border-radius: var(--radius-xxl);
+    box-shadow: var(--shadow-md);
+    padding: 1.5rem;
+    position: sticky;
+    top: 1.5rem;
+    min-height: 420px;
+}
+
+.pd-panel-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 0.5rem;
+    color: var(--text-muted-green);
+    min-height: 380px;
+}
+
+.pd-panel-empty i {
+    font-size: 1.8rem;
+    color: var(--text-sidebar-muted);
+}
+
+.pd-panel-title {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--text-main);
+    margin-bottom: 0.15rem;
+}
+
+.pd-panel-tag {
+    font-size: 0.75rem;
+    color: var(--text-muted-green);
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+}
+
+.pd-panel-desc {
+    font-size: 0.85rem;
+    color: var(--text-main);
+    margin-bottom: 1rem;
+    line-height: 1.5;
+}
+
+.pd-panel-vars {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.pd-var-card {
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    padding: 0.65rem 0.8rem;
+}
+
+.pd-var-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.3rem;
+}
+
+.pd-var-name {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.pd-var-value {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--text-main);
+    font-variant-numeric: tabular-nums;
+}
+
+.pd-var-canvas {
+    width: 100%;
+    height: 40px;
+    display: block;
+}
+
+/* ---------------------------------------------------------------------
+   9. Legend + Alarm log
+--------------------------------------------------------------------- */
+.pd-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.25rem;
+    margin-top: 1.25rem;
+    padding-top: 1.1rem;
+    border-top: 1px solid var(--border-light);
+}
+
+.pd-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted-green);
+}
+
+.pd-legend-swatch {
+    width: 20px;
+    height: 4px;
+    border-radius: 2px;
+    display: inline-block;
+}
+
+.pd-alarm-card {
+    margin-top: 1.5rem;
+}
+
+.pd-alarm-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.pd-alarm-empty {
+    font-size: 0.82rem;
+    color: var(--text-muted-green);
+    padding: 0.5rem 0;
+}
+
+.pd-alarm-item {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.55rem 0.75rem;
+    border-radius: var(--radius-md);
+    background-color: var(--sys-red-bg);
+    font-size: 0.8rem;
+}
+
+.pd-alarm-item.pd-ack {
+    background-color: var(--border-light);
+    opacity: 0.75;
+}
+
+.pd-alarm-icon {
+    color: var(--sys-red);
+    font-size: 1rem;
+}
+
+.pd-alarm-item.pd-ack .pd-alarm-icon {
+    color: var(--text-sidebar-muted);
+}
+
+.pd-alarm-text {
+    flex: 1;
+}
+
+.pd-alarm-title {
+    font-weight: 700;
+    color: var(--text-main);
+    display: block;
+}
+
+.pd-alarm-time {
+    color: var(--text-muted-green);
+    font-size: 0.72rem;
+}
+
+.pd-alarm-ack-btn {
+    border: none;
+    background: var(--brand-forest-dark);
+    color: #FFFFFF;
+    border-radius: 50rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.3rem 0.65rem;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+/* ---------------------------------------------------------------------
+   10. Mobile modal reuse of panel content
+--------------------------------------------------------------------- */
+#pd-equip-modal .modal-body .pd-panel {
+    box-shadow: none;
+    padding: 0;
+    position: static;
+    min-height: 0;
+}
+
+/* ---------------------------------------------------------------------
+   11. Responsive
+--------------------------------------------------------------------- */
+@media (max-width: 1200px) {
+    .pd-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .pd-panel {
+        position: static;
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .pd-kpi-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .pd-toolbar-group {
+        border-right: none;
+        padding-right: 0;
+    }
+
+    .pd-diagram-viewport svg {
+        min-width: 1300px;
+    }
+}
+
+/* ---------------------------------------------------------------------
+   12. Reduced motion
+--------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+    .pd-flow-anim,
+    .pd-screw-strip,
+    .pd-spin {
+        animation: none !important;
+    }
+
+    .pd-equip[data-status="fault"] .pd-equip-body {
+        animation: none !important;
+        fill-opacity: 0.6;
+    }
+}

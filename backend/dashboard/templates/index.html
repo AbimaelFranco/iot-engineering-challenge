@@ -1,359 +1,490 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Dashboard - IoT Admin{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'assets/css/process-diagram.css' %}">
+{% endblock %}
 
 {% block content %}
     <!-- START: Dashboard Header Banner -->
     <div class="page-header">
       <div>
-        <h1 class="page-title">Dashboard</h1>
-        <p class="page-subtitle">An easy way to manage sales with care and precision.</p>
+        <h1 class="page-title">Planta de secado y enfriamiento de azúcar</h1>
+        <p class="page-subtitle">Diagrama de proceso interactivo (HMI) con simulación en vivo.</p>
       </div>
-      <button class="btn-date-picker" type="button" id="date-picker-trigger">
-        <i class="bi bi-calendar4-event"></i>
-        <span id="selected-date-range">January 12, 2026 - January 23, 2026</span>
-        <i class="bi bi-chevron-down ms-1"></i>
-      </button>
+      <div class="pd-status-pill" id="pd-header-status" data-state="stopped">
+        <span class="pd-dot"></span>
+        <span id="pd-header-status-text">Planta detenida</span>
+        <span id="pd-header-clock" class="ms-2"></span>
+      </div>
     </div>
     <!-- END: Dashboard Header Banner -->
 
-    <!-- START: Main Layout Grid (2 Columns: Dashboard + Performance Pane) -->
-    <div class="row g-4">
+    <div class="pd-root" id="pd-root" data-running="false" data-zone-filter="all">
 
-      <!-- TOP AREA: Quick Info Stat Cards Row (Full Width) -->
-      <div class="col-12">
-        <div class="row g-4">
-          <!-- Stat Card 1: Green Alert Banner -->
-          <div class="col-md-4">
-            <div class="card alert-green-card">
-              <div class="position-relative z-index-2">
-                <span class="alert-green-badge">Update</span>
-                <div class="alert-green-date">Feb 14th 2026</div>
-                <div class="alert-green-text">Sales revenue increased 40% in 1 week</div>
-              </div>
-              <a href="#" class="alert-green-link z-index-2" id="alert-link-statistics">
-                <span>See Statistics</span>
-                <i class="bi bi-arrow-right"></i>
-              </a>
-
-              <!-- Isotipo del proyecto como textura de fondo (en lugar del asterisco de la plantilla) -->
-              <svg class="alert-green-bg-shape" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                <path d="M 64.70,26.14 C 67.98,25.86 70.57,25.98 73.60,26.29 C 76.63,26.60 79.97,27.22 82.90,28.01 C 85.84,28.79 88.72,29.91 91.20,31.01 C 93.69,32.11 95.67,33.23 97.80,34.59 C 99.92,35.95 101.98,37.46 103.97,39.19 C 105.96,40.91 107.92,42.80 109.74,44.96 C 111.56,47.12 113.43,49.70 114.91,52.13 C 116.39,54.57 117.44,56.26 118.63,59.58 C 119.83,62.90 121.43,68.05 122.07,72.04 C 122.71,76.04 122.91,83.24 122.50,83.54 C 122.09,83.84 120.73,76.77 119.63,73.87 C 118.53,70.97 117.46,68.74 115.91,66.13 C 114.35,63.53 112.28,60.59 110.31,58.24 C 108.35,55.90 106.37,53.96 104.11,52.04 C 101.86,50.13 99.45,48.34 96.80,46.73 C 94.14,45.13 91.24,43.61 88.20,42.44 C 85.17,41.27 81.63,40.29 78.60,39.72 C 75.57,39.14 73.07,39.02 70.01,39.00 C 66.96,38.98 63.48,39.07 60.26,39.57 C 57.03,40.07 53.89,40.84 50.67,42.01 C 47.44,43.18 43.72,44.99 40.92,46.59 C 38.12,48.19 36.31,49.51 33.89,51.62 C 31.47,53.72 28.53,56.66 26.40,59.24 C 24.27,61.83 22.65,64.29 21.09,67.13 C 19.54,69.98 18.13,73.19 17.08,76.31 C 16.03,79.43 15.25,85.77 14.80,85.85 C 14.34,85.92 14.03,80.35 14.36,76.76 C 14.69,73.17 15.74,67.96 16.79,64.31 C 17.84,60.66 18.92,58.05 20.66,54.85 C 22.41,51.65 24.77,48.04 27.26,45.10 C 29.75,42.16 32.90,39.34 35.60,37.19 C 38.31,35.03 40.43,33.69 43.49,32.16 C 46.55,30.63 50.42,29.01 53.95,28.01 C 57.49,27.00 61.43,26.43 64.70,26.14 Z" fill="#B4F105"/>
-                <path d="M 80.70,11.29 C 84.07,11.24 90.17,11.24 94.61,11.86 C 99.05,12.48 103.49,13.67 107.33,15.01 C 111.17,16.34 114.26,17.85 117.65,19.88 C 121.05,21.91 124.47,24.33 127.70,27.20 C 130.93,30.07 134.42,33.83 137.03,37.10 C 139.63,40.38 141.45,43.15 143.34,46.85 C 145.22,50.55 147.13,55.18 148.35,59.31 C 149.57,63.44 150.28,67.37 150.64,71.60 C 151.00,75.83 150.98,80.36 150.50,84.68 C 150.02,89.01 149.12,93.35 147.78,97.55 C 146.44,101.74 144.42,106.23 142.48,109.87 C 140.54,113.50 138.67,116.26 136.16,119.34 C 133.64,122.43 130.71,125.60 127.42,128.37 C 124.12,131.14 120.38,133.80 116.37,135.98 C 112.35,138.15 107.50,140.13 103.33,141.42 C 99.17,142.71 94.83,143.28 91.37,143.71 C 87.90,144.14 81.94,144.60 82.53,144.00 C 83.12,143.40 90.94,141.85 94.92,140.13 C 98.90,138.41 102.62,136.40 106.40,133.67 C 110.18,130.94 114.48,127.07 117.58,123.77 C 120.69,120.48 122.99,117.01 125.03,113.90 C 127.06,110.79 128.46,108.05 129.77,105.13 C 131.09,102.22 132.06,99.65 132.92,96.40 C 133.78,93.16 134.57,89.25 134.93,85.67 C 135.29,82.09 135.29,78.40 135.07,74.92 C 134.86,71.43 134.38,68.15 133.64,64.76 C 132.90,61.37 131.80,57.71 130.63,54.58 C 129.46,51.45 128.49,49.14 126.62,45.99 C 124.76,42.84 122.12,38.83 119.44,35.66 C 116.76,32.48 113.74,29.52 110.56,26.92 C 107.38,24.31 104.38,22.12 100.37,20.02 C 96.35,17.92 90.13,15.56 86.48,14.29 C 82.82,13.03 80.47,12.79 78.46,12.43 C 76.44,12.07 74.01,12.33 74.39,12.14 C 74.76,11.95 77.33,11.33 80.70,11.29 Z" fill="#B4F105"/>
-                <path d="M 144.56,21.43 C 145.20,21.30 152.65,26.87 156.13,30.06 C 159.62,33.25 162.65,36.67 165.47,40.55 C 168.29,44.42 171.27,49.88 173.06,53.30 C 174.85,56.71 175.30,58.40 176.21,61.02 C 177.12,63.65 177.83,65.74 178.50,69.03 C 179.17,72.32 179.93,77.07 180.21,80.75 C 180.50,84.43 180.38,88.00 180.21,91.11 C 180.05,94.22 180.00,95.73 179.21,99.40 C 178.43,103.07 177.28,108.48 175.49,113.13 C 173.70,117.79 171.29,122.85 168.47,127.31 C 165.65,131.77 162.10,136.23 158.58,139.92 C 155.07,143.60 151.33,146.65 147.38,149.40 C 143.44,152.15 139.45,154.44 134.92,156.42 C 130.39,158.40 124.66,160.19 120.18,161.29 C 115.70,162.38 111.60,162.71 108.04,163.00 C 104.48,163.29 101.78,163.17 98.82,163.00 C 95.85,162.83 93.10,162.50 90.25,162.00 C 87.39,161.50 84.43,160.81 81.67,159.99 C 78.90,159.18 76.13,158.16 73.65,157.13 C 71.17,156.11 68.93,155.03 66.78,153.84 C 64.62,152.64 62.61,151.21 60.73,149.94 C 58.84,148.68 57.09,147.56 55.46,146.24 C 53.82,144.92 50.66,142.19 50.93,142.03 C 51.20,141.87 54.46,144.14 57.08,145.27 C 59.70,146.41 63.83,147.95 66.67,148.85 C 69.51,149.76 71.49,150.21 74.11,150.71 C 76.74,151.21 79.41,151.64 82.42,151.86 C 85.42,152.07 89.32,152.10 92.16,152.00 C 95.00,151.90 96.71,151.71 99.46,151.28 C 102.20,150.85 105.81,150.14 108.62,149.42 C 111.43,148.71 113.18,148.29 116.33,146.99 C 119.49,145.70 124.05,143.68 127.54,141.67 C 131.03,139.66 134.08,137.59 137.27,134.94 C 140.47,132.29 143.91,128.95 146.73,125.77 C 149.54,122.60 151.92,119.46 154.17,115.90 C 156.42,112.34 158.51,108.53 160.20,104.42 C 161.90,100.31 163.40,95.25 164.35,91.26 C 165.31,87.28 165.69,84.48 165.93,80.51 C 166.17,76.55 166.24,71.93 165.78,67.47 C 165.33,63.01 164.31,57.84 163.21,53.74 C 162.11,49.64 161.02,46.69 159.20,42.87 C 157.39,39.05 154.75,34.39 152.31,30.82 C 149.87,27.24 143.92,21.55 144.56,21.43 Z" fill="#B4F105"/>
-                <path d="M 191.93,99.77 C 192.55,100.01 192.57,110.21 192.07,115.67 C 191.57,121.13 189.90,128.42 188.92,132.55 C 187.95,136.67 187.33,137.67 186.20,140.42 C 185.08,143.16 184.46,145.19 182.19,149.01 C 179.93,152.83 176.18,158.96 172.60,163.33 C 169.01,167.70 163.65,172.52 160.68,175.24 C 157.72,177.97 157.32,178.01 154.81,179.68 C 152.30,181.35 149.78,183.26 145.65,185.27 C 141.53,187.27 135.41,190.06 130.05,191.71 C 124.68,193.35 119.11,194.52 113.46,195.14 C 107.81,195.76 100.62,195.60 96.13,195.43 C 91.64,195.26 89.45,194.67 86.54,194.14 C 83.63,193.62 81.51,193.12 78.67,192.28 C 75.83,191.45 72.42,190.30 69.51,189.13 C 66.60,187.96 64.73,187.29 61.20,185.27 C 57.67,183.24 52.40,180.13 48.33,176.97 C 44.27,173.81 39.68,169.25 36.83,166.33 C 33.98,163.41 32.96,161.79 31.24,159.45 C 29.53,157.11 28.45,155.92 26.52,152.30 C 24.59,148.67 21.22,141.53 19.65,137.69 C 18.07,133.85 17.74,132.02 17.08,129.26 C 16.41,126.51 16.10,124.30 15.64,121.15 C 15.19,118.00 14.48,113.84 14.36,110.37 C 14.24,106.90 14.05,99.12 14.93,100.32 C 15.81,101.52 17.58,112.09 19.65,117.56 C 21.73,123.03 25.23,129.33 27.38,133.15 C 29.53,136.97 30.70,138.13 32.54,140.47 C 34.38,142.81 35.43,144.33 38.42,147.20 C 41.40,150.07 47.08,155.03 50.48,157.68 C 53.87,160.34 56.15,161.57 58.78,163.12 C 61.40,164.67 62.55,165.49 66.22,166.99 C 69.90,168.49 75.56,170.85 80.81,172.14 C 86.06,173.42 91.97,174.38 97.70,174.71 C 103.43,175.05 110.02,174.69 115.17,174.14 C 120.32,173.59 124.02,172.78 128.62,171.42 C 133.22,170.06 138.65,167.92 142.78,165.99 C 146.90,164.06 149.77,162.31 153.38,159.83 C 156.99,157.34 160.88,154.38 164.42,151.08 C 167.95,147.79 171.66,143.77 174.60,140.04 C 177.54,136.32 179.76,133.02 182.05,128.72 C 184.34,124.43 186.71,119.09 188.35,114.26 C 190.00,109.44 191.31,99.54 191.93,99.77 Z" fill="#B4F105"/>
-              </svg>
-            </div>
-          </div>
-
-          <!-- Stat Card 2: Net Income -->
-          <div class="col-md-4">
-            <div class="card card-stat d-flex flex-column justify-content-between">
-              <div>
-                <div class="card-header">
-                  <span class="stat-label">Net Income</span>
-                  <div class="dropdown">
-                    <button class="card-more-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false"
-                      aria-label="More Options" id="btn-more-income">
-                      <i class="bi bi-three-dots"></i>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end dropdown-menu-custom">
-                      <li><a class="dropdown-item" href="#"><i class="bi bi-arrow-repeat"></i> Refresh</a></li>
-                      <li><a class="dropdown-item" href="#"><i class="bi bi-file-earmark-arrow-down"></i> Export
-                          Report</a></li>
-                      <li>
-                        <hr class="dropdown-divider">
-                      </li>
-                      <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-eye-slash"></i> Hide Details</a>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-                <div class="stat-value">$196.000</div>
-                <div class="trend-badge trend-up">
-                  <i class="bi bi-arrow-up-right"></i>
-                  <span>+35% from last month</span>
-                </div>
-              </div>
-              <div class="sparkline-container sparkline-card-footer">
-                <div id="income-sparkline"></div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Stat Card 3: Total Return -->
-          <div class="col-md-4">
-            <div class="card card-stat d-flex flex-column justify-content-between">
-              <div>
-                <div class="card-header">
-                  <span class="stat-label">Total Return</span>
-                  <div class="dropdown">
-                    <button class="card-more-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false"
-                      aria-label="More Options" id="btn-more-return">
-                      <i class="bi bi-three-dots"></i>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end dropdown-menu-custom">
-                      <li><a class="dropdown-item" href="#"><i class="bi bi-arrow-repeat"></i> Refresh</a></li>
-                      <li><a class="dropdown-item" href="#"><i class="bi bi-file-earmark-arrow-down"></i> Export
-                          Report</a></li>
-                      <li>
-                        <hr class="dropdown-divider">
-                      </li>
-                      <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-eye-slash"></i> Hide Details</a>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-                <div class="stat-value">$32.000</div>
-                <div class="trend-badge trend-down">
-                  <i class="bi bi-arrow-down-left"></i>
-                  <span>-24% from last month</span>
-                </div>
-              </div>
-              <div class="sparkline-container sparkline-card-footer">
-                <div id="return-sparkline"></div>
-              </div>
-            </div>
-          </div>
+      <!-- START: KPI Row -->
+      <div class="pd-kpi-row">
+        <div class="pd-kpi-card">
+          <span class="pd-kpi-label"><i class="bi bi-speedometer2"></i> Producción</span>
+          <div><span class="pd-kpi-value" id="pd-kpi-production">--</span><span class="pd-kpi-unit">t/h</span></div>
+        </div>
+        <div class="pd-kpi-card">
+          <span class="pd-kpi-label"><i class="bi bi-droplet-half"></i> Humedad final</span>
+          <div><span class="pd-kpi-value" id="pd-kpi-moisture">--</span><span class="pd-kpi-unit">%</span></div>
+        </div>
+        <div class="pd-kpi-card">
+          <span class="pd-kpi-label"><i class="bi bi-thermometer-half"></i> Temp. azúcar final</span>
+          <div><span class="pd-kpi-value" id="pd-kpi-temp">--</span><span class="pd-kpi-unit">°C</span></div>
+        </div>
+        <div class="pd-kpi-card">
+          <span class="pd-kpi-label"><i class="bi bi-cloud-fog2"></i> Consumo de vapor</span>
+          <div><span class="pd-kpi-value" id="pd-kpi-steam">--</span><span class="pd-kpi-unit">t/h</span></div>
         </div>
       </div>
-      <!-- END: TOP AREA -->
+      <!-- END: KPI Row -->
 
-      <!-- LEFT AREA: Primary Dashboard Stats & Tables -->
-      <div class="col-xl-9 col-lg-8">
-
-        <!-- START: Details Area (Transactions + Performance Charts) -->
-        <div class="row g-4">
-          <!-- Column: Revenue Chart (Full Width / Wider) -->
-          <div class="col-12">
-            <div class="card mb-0">
-              <div class="card-header mb-2">
-                <h2 class="card-title">Revenue</h2>
-                <!-- Custom Static Legends -->
-                <div class="d-flex gap-3 align-items-center">
-                  <div class="chart-legend-item">
-                    <span class="legend-dot bg-forest-medium"></span>
-                    <span class="chart-legend-label">Income</span>
-                  </div>
-                  <div class="chart-legend-item">
-                    <span class="legend-dot bg-lime-accent"></span>
-                    <span class="chart-legend-label">Expenses</span>
-                  </div>
-                </div>
-              </div>
-              <div class="d-flex align-items-baseline gap-2 mb-3">
-                <span class="stat-value-amount">$196.000</span>
-                <span class="trend-badge trend-up fs-xs">+35% from last month</span>
-              </div>
-              <div id="revenue-chart"></div>
-            </div>
-          </div>
-
-          <!-- Column: Transaction List -->
-          <div class="col-md-7 d-flex flex-column">
-            <div class="card h-100 flex-grow-1">
-              <div class="card-header">
-                <h2 class="card-title">Transaction</h2>
-                <div class="dropdown">
-                  <button class="card-more-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false"
-                    aria-label="More Options" id="btn-more-transaction">
-                    <i class="bi bi-three-dots"></i>
-                  </button>
-                  <ul class="dropdown-menu dropdown-menu-end dropdown-menu-custom">
-                    <li><a class="dropdown-item" href="#"><i class="bi bi-funnel"></i> Filter Status</a></li>
-                    <li><a class="dropdown-item" href="#"><i class="bi bi-file-earmark-arrow-down"></i> Export CSV</a>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-
-              <!-- Transaction Items List -->
-              <div class="transaction-list">
-                <div class="transaction-item">
-                  <div class="transaction-icon bg-forest-light text-lime">
-                    <i class="bi bi-spotify"></i>
-                  </div>
-                  <div class="transaction-info">
-                    <div class="transaction-name">Spotify Subscription</div>
-                    <div class="transaction-date">Feb 14, 2026 • 12:40 PM</div>
-                  </div>
-                  <div class="transaction-amount text-main">-$15.00</div>
-                </div>
-
-                <div class="transaction-item">
-                  <div class="transaction-icon bg-forest-light text-lime">
-                    <i class="bi bi-paypal"></i>
-                  </div>
-                  <div class="transaction-info">
-                    <div class="transaction-name">Paypal Transfer</div>
-                    <div class="transaction-date">Feb 13, 2026 • 08:15 AM</div>
-                  </div>
-                  <div class="transaction-amount text-success">+$1,250.00</div>
-                </div>
-
-                <div class="transaction-item">
-                  <div class="transaction-icon bg-forest-light text-lime">
-                    <i class="bi bi-stripe"></i>
-                  </div>
-                  <div class="transaction-info">
-                    <div class="transaction-name">Stripe Payout</div>
-                    <div class="transaction-date">Feb 11, 2026 • 04:30 PM</div>
-                  </div>
-                  <div class="transaction-amount text-success">+$3,400.00</div>
-                </div>
-
-                <div class="transaction-item">
-                  <div class="transaction-icon bg-forest-light text-lime">
-                    <i class="bi bi-slack"></i>
-                  </div>
-                  <div class="transaction-info">
-                    <div class="transaction-name">Slack Pro Workspace</div>
-                    <div class="transaction-date">Feb 09, 2026 • 09:20 AM</div>
-                  </div>
-                  <div class="transaction-amount text-main">-$45.00</div>
-                </div>
-              </div>
-
-            </div>
-          </div>
-
-          <!-- Column: Product Overview Progress -->
-          <div class="col-md-5 d-flex flex-column">
-            <div class="card h-100 flex-grow-1">
-              <div class="card-header">
-                <h2 class="card-title">Product Overview</h2>
-                <div class="dropdown">
-                  <button class="card-more-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false"
-                    aria-label="More Options" id="btn-more-products">
-                    <i class="bi bi-three-dots"></i>
-                  </button>
-                  <ul class="dropdown-menu dropdown-menu-end dropdown-menu-custom">
-                    <li><a class="dropdown-item" href="#"><i class="bi bi-plus-lg"></i> Add Product</a></li>
-                    <li><a class="dropdown-item" href="#"><i class="bi bi-gear"></i> Manage</a></li>
-                  </ul>
-                </div>
-              </div>
-
-              <div class="progress-container">
-                <div class="progress-label-row">
-                  <span class="progress-label">Product Launched</span>
-                  <span class="progress-value">233</span>
-                </div>
-                <div class="progress" role="progressbar" aria-label="Product Launched Progress" aria-valuenow="65"
-                  aria-valuemin="0" aria-valuemax="100">
-                  <div class="progress-bar bg-lime-accent w-65"></div>
-                </div>
-              </div>
-
-              <div class="progress-container">
-                <div class="progress-label-row">
-                  <span class="progress-label">Ongoing Product</span>
-                  <span class="progress-value">23</span>
-                </div>
-                <div class="progress" role="progressbar" aria-label="Ongoing Product Progress" aria-valuenow="20"
-                  aria-valuemin="0" aria-valuemax="100">
-                  <div class="progress-bar bg-lime-accent opacity-50 w-50"></div>
-                </div>
-              </div>
-
-              <div class="progress-container">
-                <div class="progress-label-row">
-                  <span class="progress-label">Product Sold</span>
-                  <span class="progress-value">482</span>
-                </div>
-                <div class="progress" role="progressbar" aria-label="Product Sold Progress" aria-valuenow="85"
-                  aria-valuemin="0" aria-valuemax="100">
-                  <div class="progress-bar bg-lime-accent w-85"></div>
-                </div>
-              </div>
-
-              <div class="progress-container">
-                <div class="progress-label-row">
-                  <span class="progress-label">Product Returned</span>
-                  <span class="progress-value">8</span>
-                </div>
-                <div class="progress" role="progressbar" aria-label="Product Returned Progress" aria-valuenow="10"
-                  aria-valuemin="0" aria-valuemax="100">
-                  <div class="progress-bar bg-brand-orange w-38"></div>
-                </div>
-              </div>
-
-              <div class="progress-container">
-                <div class="progress-label-row">
-                  <span class="progress-label">Product In Stock</span>
-                  <span class="progress-value">1,420</span>
-                </div>
-                <div class="progress" role="progressbar" aria-label="Product In Stock Progress" aria-valuenow="75"
-                  aria-valuemin="0" aria-valuemax="100">
-                  <div class="progress-bar bg-lime-accent w-75"></div>
-                </div>
-              </div>
-
-              <div class="progress-container">
-                <div class="progress-label-row">
-                  <span class="progress-label">Pending Shipment</span>
-                  <span class="progress-value">64</span>
-                </div>
-                <div class="progress" role="progressbar" aria-label="Pending Shipment Progress" aria-valuenow="45"
-                  aria-valuemin="0" aria-valuemax="100">
-                  <div class="progress-bar bg-lime-accent opacity-50 w-45"></div>
-                </div>
-              </div>
-            </div>
-
-          </div>
+      <!-- START: Toolbar -->
+      <div class="pd-toolbar">
+        <div class="pd-toolbar-group">
+          <button type="button" class="pd-btn pd-btn-start" id="pd-btn-start">
+            <i class="bi bi-play-fill"></i> Arrancar planta
+          </button>
+          <button type="button" class="pd-btn pd-btn-stop" id="pd-btn-stop">
+            <i class="bi bi-stop-fill"></i> Detener
+          </button>
         </div>
-        <!-- END: Details Area -->
-
+        <div class="pd-toolbar-group">
+          <span class="pd-toolbar-label">Velocidad</span>
+          <button type="button" class="pd-chip" data-speed="1" aria-pressed="true">×1</button>
+          <button type="button" class="pd-chip" data-speed="2" aria-pressed="false">×2</button>
+          <button type="button" class="pd-chip" data-speed="5" aria-pressed="false">×5</button>
+        </div>
+        <div class="pd-toolbar-group">
+          <span class="pd-toolbar-label">Zona</span>
+          <button type="button" class="pd-chip" data-zone="all" aria-pressed="true">Todas</button>
+          <button type="button" class="pd-chip" data-zone="secado" aria-pressed="false">Secado</button>
+          <button type="button" class="pd-chip" data-zone="transporte" aria-pressed="false">Transporte</button>
+          <button type="button" class="pd-chip" data-zone="enfriamiento" aria-pressed="false">Enfriamiento</button>
+          <button type="button" class="pd-chip" data-zone="frio" aria-pressed="false">Unidad de frío</button>
+          <button type="button" class="pd-chip" data-zone="deshumidificador" aria-pressed="false">Deshumidificador</button>
+        </div>
+        <div class="pd-toolbar-group" style="border-right:none;">
+          <button type="button" class="pd-btn pd-btn-fault" id="pd-btn-fault">
+            <i class="bi bi-exclamation-triangle-fill"></i> Simular falla
+          </button>
+        </div>
       </div>
+      <!-- END: Toolbar -->
 
-      <!-- RIGHT AREA: Performance Details Sidebar Panel -->
-      <div class="col-xl-3 col-lg-4">
-        <div class="right-panel-wrapper d-flex flex-column gap-4 h-100">
+      <!-- START: Diagram + Side Panel -->
+      <div class="pd-layout">
+        <div class="pd-diagram-card">
+          <div class="pd-diagram-viewport" id="pd-viewport">
+            <svg id="pd-svg" viewBox="0 0 1600 1040" role="img" aria-label="Diagrama de proceso: secado y enfriamiento de azúcar" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <marker id="pd-arrow-sugar" markerWidth="10" markerHeight="10" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#F97316"/></marker>
+                <marker id="pd-arrow-air-dry" markerWidth="10" markerHeight="10" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#2E6BE6"/></marker>
+                <marker id="pd-arrow-air-cool" markerWidth="10" markerHeight="10" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#7DD3FC"/></marker>
+                <marker id="pd-arrow-steam" markerWidth="10" markerHeight="10" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#EF4444"/></marker>
+                <marker id="pd-arrow-condensate" markerWidth="10" markerHeight="10" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#166534"/></marker>
+                <marker id="pd-arrow-plates" markerWidth="10" markerHeight="10" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#16A34A"/></marker>
+                <marker id="pd-arrow-chilled" markerWidth="10" markerHeight="10" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#6EE7B7"/></marker>
+                <marker id="pd-arrow-recirc" markerWidth="10" markerHeight="10" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#0D9488"/></marker>
 
-          <!-- Performance Donut Chart card -->
-          <div class="card flex-grow-1 d-flex flex-column justify-content-between mb-0">
-            <div class="card-header mb-1">
-              <h2 class="card-title">Total View Performance</h2>
-            </div>
+                <symbol id="pd-motor" viewBox="0 0 20 20">
+                  <circle cx="10" cy="10" r="9" fill="var(--brand-lime)" stroke="var(--brand-forest-dark)" stroke-width="1.5"/>
+                  <text x="10" y="14" text-anchor="middle" font-size="10" font-weight="800" fill="var(--brand-forest-dark)">M</text>
+                </symbol>
 
-            <div id="views-chart"></div>
+                <path id="pd-path-sugar-main" d="M15,255 L160,270 L300,255 L320,245 L740,245 L800,300 L810,340 L920,340 L970,360 L1000,400 L1035,400 L1035,120 L1050,105 L1110,135 L1150,160 L1180,195 L1200,225 L1240,225 L1340,140 L1430,110 L1430,600 L1430,660 L1460,700 L1500,735"/>
+                <path id="pd-path-elevator-loop" d="M1020,625 L1020,115 Q1035,100 1050,115 L1050,625 Q1035,640 1020,625 Z"/>
+              </defs>
 
-            <!-- Custom Legends below the chart -->
-            <div class="chart-legends-container">
-              <div class="chart-legend-item">
-                <span class="legend-dot bg-lime-accent"></span>
-                <span class="text-muted-green">View Count</span>
-              </div>
-              <div class="chart-legend-item">
-                <span class="legend-dot bg-forest-medium"></span>
-                <span class="text-muted-green">Percentage</span>
-              </div>
-              <div class="chart-legend-item">
-                <span class="legend-dot bg-brand-orange"></span>
-                <span class="text-muted-green">Sales</span>
-              </div>
-            </div>
-          </div>
+              <!-- ================= UTILITY ZONE BACKGROUND ================= -->
+              <rect class="pd-zone-box" x="20" y="700" width="1560" height="320" rx="24"></rect>
+              <text class="pd-zone-label" x="40" y="722">Zona de servicios</text>
 
-          <!-- Level Up Promotion CTA banner -->
-          <div class="promo-banner-card">
-            <!-- Isotipo del proyecto (recoloreado, subtil y cercano al fondo de la tarjeta) -->
-            <svg class="promo-banner-bg-shape" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-              <path d="M 64.70,26.14 C 67.98,25.86 70.57,25.98 73.60,26.29 C 76.63,26.60 79.97,27.22 82.90,28.01 C 85.84,28.79 88.72,29.91 91.20,31.01 C 93.69,32.11 95.67,33.23 97.80,34.59 C 99.92,35.95 101.98,37.46 103.97,39.19 C 105.96,40.91 107.92,42.80 109.74,44.96 C 111.56,47.12 113.43,49.70 114.91,52.13 C 116.39,54.57 117.44,56.26 118.63,59.58 C 119.83,62.90 121.43,68.05 122.07,72.04 C 122.71,76.04 122.91,83.24 122.50,83.54 C 122.09,83.84 120.73,76.77 119.63,73.87 C 118.53,70.97 117.46,68.74 115.91,66.13 C 114.35,63.53 112.28,60.59 110.31,58.24 C 108.35,55.90 106.37,53.96 104.11,52.04 C 101.86,50.13 99.45,48.34 96.80,46.73 C 94.14,45.13 91.24,43.61 88.20,42.44 C 85.17,41.27 81.63,40.29 78.60,39.72 C 75.57,39.14 73.07,39.02 70.01,39.00 C 66.96,38.98 63.48,39.07 60.26,39.57 C 57.03,40.07 53.89,40.84 50.67,42.01 C 47.44,43.18 43.72,44.99 40.92,46.59 C 38.12,48.19 36.31,49.51 33.89,51.62 C 31.47,53.72 28.53,56.66 26.40,59.24 C 24.27,61.83 22.65,64.29 21.09,67.13 C 19.54,69.98 18.13,73.19 17.08,76.31 C 16.03,79.43 15.25,85.77 14.80,85.85 C 14.34,85.92 14.03,80.35 14.36,76.76 C 14.69,73.17 15.74,67.96 16.79,64.31 C 17.84,60.66 18.92,58.05 20.66,54.85 C 22.41,51.65 24.77,48.04 27.26,45.10 C 29.75,42.16 32.90,39.34 35.60,37.19 C 38.31,35.03 40.43,33.69 43.49,32.16 C 46.55,30.63 50.42,29.01 53.95,28.01 C 57.49,27.00 61.43,26.43 64.70,26.14 Z" fill="#CBD2C3"/>
-              <path d="M 80.70,11.29 C 84.07,11.24 90.17,11.24 94.61,11.86 C 99.05,12.48 103.49,13.67 107.33,15.01 C 111.17,16.34 114.26,17.85 117.65,19.88 C 121.05,21.91 124.47,24.33 127.70,27.20 C 130.93,30.07 134.42,33.83 137.03,37.10 C 139.63,40.38 141.45,43.15 143.34,46.85 C 145.22,50.55 147.13,55.18 148.35,59.31 C 149.57,63.44 150.28,67.37 150.64,71.60 C 151.00,75.83 150.98,80.36 150.50,84.68 C 150.02,89.01 149.12,93.35 147.78,97.55 C 146.44,101.74 144.42,106.23 142.48,109.87 C 140.54,113.50 138.67,116.26 136.16,119.34 C 133.64,122.43 130.71,125.60 127.42,128.37 C 124.12,131.14 120.38,133.80 116.37,135.98 C 112.35,138.15 107.50,140.13 103.33,141.42 C 99.17,142.71 94.83,143.28 91.37,143.71 C 87.90,144.14 81.94,144.60 82.53,144.00 C 83.12,143.40 90.94,141.85 94.92,140.13 C 98.90,138.41 102.62,136.40 106.40,133.67 C 110.18,130.94 114.48,127.07 117.58,123.77 C 120.69,120.48 122.99,117.01 125.03,113.90 C 127.06,110.79 128.46,108.05 129.77,105.13 C 131.09,102.22 132.06,99.65 132.92,96.40 C 133.78,93.16 134.57,89.25 134.93,85.67 C 135.29,82.09 135.29,78.40 135.07,74.92 C 134.86,71.43 134.38,68.15 133.64,64.76 C 132.90,61.37 131.80,57.71 130.63,54.58 C 129.46,51.45 128.49,49.14 126.62,45.99 C 124.76,42.84 122.12,38.83 119.44,35.66 C 116.76,32.48 113.74,29.52 110.56,26.92 C 107.38,24.31 104.38,22.12 100.37,20.02 C 96.35,17.92 90.13,15.56 86.48,14.29 C 82.82,13.03 80.47,12.79 78.46,12.43 C 76.44,12.07 74.01,12.33 74.39,12.14 C 74.76,11.95 77.33,11.33 80.70,11.29 Z" fill="#CBD2C3"/>
-              <path d="M 144.56,21.43 C 145.20,21.30 152.65,26.87 156.13,30.06 C 159.62,33.25 162.65,36.67 165.47,40.55 C 168.29,44.42 171.27,49.88 173.06,53.30 C 174.85,56.71 175.30,58.40 176.21,61.02 C 177.12,63.65 177.83,65.74 178.50,69.03 C 179.17,72.32 179.93,77.07 180.21,80.75 C 180.50,84.43 180.38,88.00 180.21,91.11 C 180.05,94.22 180.00,95.73 179.21,99.40 C 178.43,103.07 177.28,108.48 175.49,113.13 C 173.70,117.79 171.29,122.85 168.47,127.31 C 165.65,131.77 162.10,136.23 158.58,139.92 C 155.07,143.60 151.33,146.65 147.38,149.40 C 143.44,152.15 139.45,154.44 134.92,156.42 C 130.39,158.40 124.66,160.19 120.18,161.29 C 115.70,162.38 111.60,162.71 108.04,163.00 C 104.48,163.29 101.78,163.17 98.82,163.00 C 95.85,162.83 93.10,162.50 90.25,162.00 C 87.39,161.50 84.43,160.81 81.67,159.99 C 78.90,159.18 76.13,158.16 73.65,157.13 C 71.17,156.11 68.93,155.03 66.78,153.84 C 64.62,152.64 62.61,151.21 60.73,149.94 C 58.84,148.68 57.09,147.56 55.46,146.24 C 53.82,144.92 50.66,142.19 50.93,142.03 C 51.20,141.87 54.46,144.14 57.08,145.27 C 59.70,146.41 63.83,147.95 66.67,148.85 C 69.51,149.76 71.49,150.21 74.11,150.71 C 76.74,151.21 79.41,151.64 82.42,151.86 C 85.42,152.07 89.32,152.10 92.16,152.00 C 95.00,151.90 96.71,151.71 99.46,151.28 C 102.20,150.85 105.81,150.14 108.62,149.42 C 111.43,148.71 113.18,148.29 116.33,146.99 C 119.49,145.70 124.05,143.68 127.54,141.67 C 131.03,139.66 134.08,137.59 137.27,134.94 C 140.47,132.29 143.91,128.95 146.73,125.77 C 149.54,122.60 151.92,119.46 154.17,115.90 C 156.42,112.34 158.51,108.53 160.20,104.42 C 161.90,100.31 163.40,95.25 164.35,91.26 C 165.31,87.28 165.69,84.48 165.93,80.51 C 166.17,76.55 166.24,71.93 165.78,67.47 C 165.33,63.01 164.31,57.84 163.21,53.74 C 162.11,49.64 161.02,46.69 159.20,42.87 C 157.39,39.05 154.75,34.39 152.31,30.82 C 149.87,27.24 143.92,21.55 144.56,21.43 Z" fill="#CBD2C3"/>
-              <path d="M 191.93,99.77 C 192.55,100.01 192.57,110.21 192.07,115.67 C 191.57,121.13 189.90,128.42 188.92,132.55 C 187.95,136.67 187.33,137.67 186.20,140.42 C 185.08,143.16 184.46,145.19 182.19,149.01 C 179.93,152.83 176.18,158.96 172.60,163.33 C 169.01,167.70 163.65,172.52 160.68,175.24 C 157.72,177.97 157.32,178.01 154.81,179.68 C 152.30,181.35 149.78,183.26 145.65,185.27 C 141.53,187.27 135.41,190.06 130.05,191.71 C 124.68,193.35 119.11,194.52 113.46,195.14 C 107.81,195.76 100.62,195.60 96.13,195.43 C 91.64,195.26 89.45,194.67 86.54,194.14 C 83.63,193.62 81.51,193.12 78.67,192.28 C 75.83,191.45 72.42,190.30 69.51,189.13 C 66.60,187.96 64.73,187.29 61.20,185.27 C 57.67,183.24 52.40,180.13 48.33,176.97 C 44.27,173.81 39.68,169.25 36.83,166.33 C 33.98,163.41 32.96,161.79 31.24,159.45 C 29.53,157.11 28.45,155.92 26.52,152.30 C 24.59,148.67 21.22,141.53 19.65,137.69 C 18.07,133.85 17.74,132.02 17.08,129.26 C 16.41,126.51 16.10,124.30 15.64,121.15 C 15.19,118.00 14.48,113.84 14.36,110.37 C 14.24,106.90 14.05,99.12 14.93,100.32 C 15.81,101.52 17.58,112.09 19.65,117.56 C 21.73,123.03 25.23,129.33 27.38,133.15 C 29.53,136.97 30.70,138.13 32.54,140.47 C 34.38,142.81 35.43,144.33 38.42,147.20 C 41.40,150.07 47.08,155.03 50.48,157.68 C 53.87,160.34 56.15,161.57 58.78,163.12 C 61.40,164.67 62.55,165.49 66.22,166.99 C 69.90,168.49 75.56,170.85 80.81,172.14 C 86.06,173.42 91.97,174.38 97.70,174.71 C 103.43,175.05 110.02,174.69 115.17,174.14 C 120.32,173.59 124.02,172.78 128.62,171.42 C 133.22,170.06 138.65,167.92 142.78,165.99 C 146.90,164.06 149.77,162.31 153.38,159.83 C 156.99,157.34 160.88,154.38 164.42,151.08 C 167.95,147.79 171.66,143.77 174.60,140.04 C 177.54,136.32 179.76,133.02 182.05,128.72 C 184.34,124.43 186.71,119.09 188.35,114.26 C 190.00,109.44 191.31,99.54 191.93,99.77 Z" fill="#CBD2C3"/>
+              <!-- ================= FLOW LINES (behind equipment) ================= -->
+              <g class="pd-flow-layer">
+                <!-- Azucar -->
+                <path class="pd-flow pd-flow-sugar pd-flow-anim" marker-end="url(#pd-arrow-sugar)"
+                  d="M15,255 L160,270 L300,255 M320,245 L740,245 M800,300 L810,340 L920,340 M970,360 L1000,400 L1035,400 M1035,120 L1050,105 L1110,135 M1150,160 L1180,195 L1200,225 M1240,225 L1340,140 L1430,110 M1430,600 L1430,660 L1460,700 M1500,735 L1540,760"></path>
+
+                <!-- Aire de secado -->
+                <path class="pd-flow pd-flow-air-dry pd-flow-anim" marker-end="url(#pd-arrow-air-dry)"
+                  d="M20,800 L60,800 M130,800 L160,800 M230,800 L260,800 M350,800 L380,800 M425,770 L425,330 L790,330 L790,230 M320,220 L320,160 L240,160 L240,110"></path>
+                <path class="pd-flow pd-flow-air-dry pd-flow-anim" marker-end="url(#pd-arrow-air-dry)" d="M240,60 L300,70"></path>
+
+                <!-- Aire del enfriador / deshumidificado -->
+                <path class="pd-flow pd-flow-air-cool pd-flow-anim" marker-end="url(#pd-arrow-air-cool)"
+                  d="M880,800 L920,800 M990,800 L1010,800 M1100,800 L1120,800 M1190,800 L1190,880 M1190,880 L1190,660 L1430,660 L1430,650"></path>
+                <path class="pd-flow pd-flow-air-cool pd-flow-anim" marker-end="url(#pd-arrow-air-dry)"
+                  d="M1550,110 L1550,50 L790,50 L790,170"></path>
+
+                <!-- Vapor -->
+                <path class="pd-flow pd-flow-steam pd-flow-anim" marker-end="url(#pd-arrow-steam)" d="M425,740 L425,770"></path>
+                <!-- Condensado -->
+                <path class="pd-flow pd-flow-condensate pd-flow-anim" marker-end="url(#pd-arrow-condensate)" d="M300,770 L300,745 M305,745 L425,745 M425,745 L425,770"></path>
+
+                <!-- Agua de placas (enfriador y chiller) -->
+                <path class="pd-flow pd-flow-water-plates pd-flow-anim" marker-end="url(#pd-arrow-plates)" d="M1370,825 L1414,900"></path>
+                <path class="pd-flow pd-flow-water-plates pd-flow-anim" marker-end="url(#pd-arrow-plates)" d="M1430,900 L1430,660"></path>
+                <path class="pd-flow pd-flow-water-plates pd-flow-anim" marker-end="url(#pd-arrow-plates)" d="M650,805 L680,805"></path>
+                <path class="pd-flow pd-flow-water-plates pd-flow-anim" marker-end="url(#pd-arrow-plates)" d="M595,840 L550,930"></path>
+
+                <!-- Agua helada -->
+                <path class="pd-flow pd-flow-chilled pd-flow-anim" marker-end="url(#pd-arrow-chilled)" d="M750,845 L800,845 L800,850"></path>
+                <path class="pd-flow pd-flow-chilled pd-flow-anim" marker-end="url(#pd-arrow-chilled)" d="M800,850 L970,850 L970,830"></path>
+                <path class="pd-flow pd-flow-chilled pd-flow-anim" marker-end="url(#pd-arrow-chilled)" d="M1010,830 L1010,890 L750,890 L750,880"></path>
+
+                <!-- Recirculacion depurador -->
+                <path class="pd-flow pd-flow-recirc pd-flow-anim" marker-end="url(#pd-arrow-recirc)" d="M150,186 L150,154 L170,120"></path>
+                <path class="pd-flow pd-flow-recirc pd-flow-anim" marker-end="url(#pd-arrow-recirc)" d="M150,186 L150,230"></path>
+              </g>
+
+              <!-- Flow line labels -->
+              <text class="pd-equip-label" x="630" y="238" font-size="11" fill="#6C7E75">aire de secado (contracorriente)</text>
+              <text class="pd-equip-label" x="1470" y="745" font-size="11" fill="#6C7E75">azúcar enfriado</text>
+              <text class="pd-equip-label" x="30" y="236" font-size="11" fill="#6C7E75">azúcar húmedo</text>
+
+              <!-- ================= EQUIPMENT: ZONA SECADO ================= -->
+              <g class="pd-equip" data-id="scrubber" data-zone="secado" data-status="stopped" data-tag="10" data-name="Depurador húmedo" tabindex="0" role="button" aria-label="Depurador húmedo / separador de polvo (equipo 10)">
+                <path class="pd-equip-body" d="M120,45 L240,45 L240,95 L200,140 L160,140 L120,95 Z"></path>
+                <circle class="pd-equip-tag-bg" cx="124" cy="49" r="11"></circle>
+                <text class="pd-equip-tag" x="124" y="53" text-anchor="middle">10</text>
+                <text class="pd-equip-label" x="180" y="160" text-anchor="middle">Depurador</text>
+                <use href="#pd-motor" x="206" y="30" width="18" height="18"></use>
+              </g>
+
+              <g class="pd-equip" data-id="fan-extract" data-zone="secado" data-status="stopped" data-tag="12" data-name="Ventilador de extracción" tabindex="0" role="button" aria-label="Ventilador de extracción a la atmósfera (equipo 12)">
+                <circle class="pd-equip-body" cx="330" cy="70" r="26"></circle>
+                <g class="pd-spin" data-spin="fan-extract">
+                  <path class="pd-equip-accent" d="M330,70 L330,50 M330,70 L348,80 M330,70 L312,80" stroke="#243B30" stroke-width="3" stroke-linecap="round" fill="none"></path>
+                </g>
+                <circle class="pd-equip-tag-bg" cx="306" cy="48" r="11"></circle>
+                <text class="pd-equip-tag" x="306" y="52" text-anchor="middle">12</text>
+                <text class="pd-equip-label" x="330" y="108" text-anchor="middle">Ventilador</text>
+                <text class="pd-equip-label" x="330" y="26" text-anchor="middle" font-size="11">Atmósfera ↑</text>
+              </g>
+
+              <g class="pd-equip" data-id="pump-scrubber" data-zone="secado" data-status="stopped" data-tag="11" data-name="Bomba recirculación depurador" tabindex="0" role="button" aria-label="Bomba de recirculación del depurador (equipo 11)">
+                <circle class="pd-equip-body" cx="150" cy="206" r="18"></circle>
+                <g class="pd-spin" data-spin="pump-scrubber">
+                  <path class="pd-equip-accent" d="M150,206 L150,192 M150,206 L163,214 M150,206 L137,214" stroke="#243B30" stroke-width="2.5" stroke-linecap="round" fill="none"></path>
+                </g>
+                <circle class="pd-equip-tag-bg" cx="166" cy="192" r="10"></circle>
+                <text class="pd-equip-tag" x="166" y="196" text-anchor="middle">11</text>
+                <text class="pd-equip-label" x="150" y="236" text-anchor="middle" font-size="11">Purga de lodos ↓</text>
+              </g>
+
+              <g class="pd-equip" data-id="screw-in" data-zone="secado" data-status="stopped" data-tag="2" data-name="Tornillo sinfín – entrada" tabindex="0" role="button" aria-label="Transportador de tornillo sinfín, entrada de azúcar húmedo (equipo 2)">
+                <rect class="pd-equip-body" x="20" y="250" width="290" height="42" rx="6"></rect>
+                <clipPath id="pd-clip-screw-in"><rect x="20" y="250" width="290" height="42" rx="6"></rect></clipPath>
+                <g clip-path="url(#pd-clip-screw-in)">
+                  <g class="pd-screw-strip">
+                    <path d="M20,271 l12,-21 l12,21 l12,-21 l12,21 l12,-21 l12,21 l12,-21 l12,21 l12,-21 l12,21 l12,-21 l12,21 l12,-21 l12,21 l12,-21 l12,21 l12,-21 l12,21 l12,-21 l12,21 l12,-21 l12,21 l12,-21 l12,21"
+                      fill="none" stroke="#9AA89E" stroke-width="3"></path>
+                  </g>
+                </g>
+                <circle class="pd-equip-tag-bg" cx="34" cy="246" r="10"></circle>
+                <text class="pd-equip-tag" x="34" y="250" text-anchor="middle">2</text>
+                <text class="pd-equip-label" x="165" y="305" text-anchor="middle" font-size="11">Tornillo entrada</text>
+                <use href="#pd-motor" x="130" y="228" width="16" height="16"></use>
+              </g>
+
+              <!-- Dryer drum -->
+              <g class="pd-equip" data-id="dryer" data-zone="secado" data-status="stopped" data-tag="1" data-name="Secador rotatorio" tabindex="0" role="button" aria-label="Secador rotatorio (equipo 1)">
+                <ellipse class="pd-equip-body" cx="320" cy="245" rx="26" ry="55"></ellipse>
+                <ellipse class="pd-equip-body" cx="740" cy="245" rx="26" ry="55"></ellipse>
+                <rect class="pd-equip-body" x="320" y="190" width="420" height="110" rx="4"></rect>
+                <clipPath id="pd-clip-dryer"><rect x="320" y="190" width="420" height="110"></rect></clipPath>
+                <g clip-path="url(#pd-clip-dryer)">
+                  <g class="pd-screw-strip">
+                    <path d="M310,190 l20,110 M350,190 l20,110 M390,190 l20,110 M430,190 l20,110 M470,190 l20,110 M510,190 l20,110 M550,190 l20,110 M590,190 l20,110 M630,190 l20,110 M670,190 l20,110 M710,190 l20,110 M750,190 l20,110"
+                      stroke="#D7DFD9" stroke-width="10"></path>
+                  </g>
+                </g>
+                <rect x="320" y="190" width="420" height="110" fill="none" stroke="#243B30" stroke-width="2"></rect>
+                <g class="pd-spin pd-spin-viewbox" data-spin="dryer-left" style="transform-origin:320px 245px; --pd-rotate-dur:3.2s;">
+                  <path d="M320,220 L320,270 M298,245 L342,245" stroke="#4E5F56" stroke-width="2.5"></path>
+                </g>
+                <g class="pd-spin pd-spin-viewbox" data-spin="dryer-right" style="transform-origin:740px 245px; --pd-rotate-dur:3.2s;">
+                  <path d="M740,220 L740,270 M718,245 L762,245" stroke="#4E5F56" stroke-width="2.5"></path>
+                </g>
+                <circle class="pd-equip-tag-bg" cx="302" cy="186" r="12"></circle>
+                <text class="pd-equip-tag" x="302" y="190" text-anchor="middle">1</text>
+                <text class="pd-equip-label" x="530" y="320" text-anchor="middle">Secador rotatorio</text>
+                <use href="#pd-motor" x="520" y="170" width="20" height="20"></use>
+              </g>
+
+              <g class="pd-equip" data-id="screw-out" data-zone="transporte" data-status="stopped" data-tag="2" data-name="Tornillo sinfín – salida" tabindex="0" role="button" aria-label="Transportador de tornillo sinfín, salida del secador (equipo 2)">
+                <rect class="pd-equip-body" x="720" y="318" width="200" height="40" rx="6"></rect>
+                <clipPath id="pd-clip-screw-out"><rect x="720" y="318" width="200" height="40" rx="6"></rect></clipPath>
+                <g clip-path="url(#pd-clip-screw-out)">
+                  <g class="pd-screw-strip">
+                    <path d="M720,338 l12,-19 l12,19 l12,-19 l12,19 l12,-19 l12,19 l12,-19 l12,19 l12,-19 l12,19 l12,-19 l12,19 l12,-19 l12,19 l12,-19 l12,19"
+                      fill="none" stroke="#9AA89E" stroke-width="3"></path>
+                  </g>
+                </g>
+                <circle class="pd-equip-tag-bg" cx="734" cy="314" r="10"></circle>
+                <text class="pd-equip-tag" x="734" y="318" text-anchor="middle">2</text>
+                <text class="pd-equip-label" x="820" y="375" text-anchor="middle" font-size="11">Tornillo salida</text>
+              </g>
+
+              <g class="pd-equip" data-id="valve-elevator" data-zone="transporte" data-status="stopped" data-tag="3" data-name="Válvula rotativa – entrada elevador" tabindex="0" role="button" aria-label="Válvula rotativa, entrada al elevador (equipo 3)">
+                <circle class="pd-equip-body" cx="970" cy="360" r="20"></circle>
+                <g class="pd-spin" data-spin="valve-elevator">
+                  <path d="M970,342 L970,378 M952,360 L988,360" stroke="#243B30" stroke-width="2.5"></path>
+                </g>
+                <circle class="pd-equip-tag-bg" cx="988" cy="344" r="10"></circle>
+                <text class="pd-equip-tag" x="988" y="348" text-anchor="middle">3</text>
+              </g>
+
+              <!-- ================= EQUIPMENT: ZONA TRANSPORTE ================= -->
+              <g class="pd-equip" data-id="elevator" data-zone="transporte" data-status="stopped" data-tag="16" data-name="Elevador de cangilones" tabindex="0" role="button" aria-label="Elevador de cangilones (equipo 16)">
+                <rect class="pd-equip-body" x="1000" y="90" width="70" height="560" rx="10"></rect>
+                <g id="pd-buckets"></g>
+                <circle class="pd-equip-tag-bg" cx="1018" cy="108" r="11"></circle>
+                <text class="pd-equip-tag" x="1018" y="112" text-anchor="middle">16</text>
+                <text class="pd-equip-label" x="1035" y="680" text-anchor="middle" font-size="11">Elevador</text>
+                <use href="#pd-motor" x="1046" y="76" width="18" height="18"></use>
+              </g>
+
+              <g class="pd-equip" data-id="screen" data-zone="transporte" data-status="stopped" data-tag="17" data-name="Criba / tamiz" tabindex="0" role="button" aria-label="Criba clasificadora (equipo 17)">
+                <rect class="pd-equip-body" x="1095" y="90" width="170" height="80" rx="8"></rect>
+                <path class="pd-equip-accent" d="M1105,110 h150 M1105,125 h150 M1105,140 h150 M1105,155 h150" stroke="#B7C2BA" stroke-width="2" fill="none"></path>
+                <circle class="pd-equip-tag-bg" cx="1113" cy="86" r="11"></circle>
+                <text class="pd-equip-tag" x="1113" y="90" text-anchor="middle">17</text>
+                <text class="pd-equip-label" x="1180" y="190" text-anchor="middle" font-size="11">Criba</text>
+              </g>
+
+              <g class="pd-equip" data-id="valve-cooler" data-zone="transporte" data-status="stopped" data-tag="3" data-name="Válvula rotativa – entrada enfriador" tabindex="0" role="button" aria-label="Válvula rotativa, entrada al enfriador (equipo 3)">
+                <circle class="pd-equip-body" cx="1200" cy="225" r="18"></circle>
+                <g class="pd-spin" data-spin="valve-cooler">
+                  <path d="M1200,209 L1200,241 M1184,225 L1216,225" stroke="#243B30" stroke-width="2.5"></path>
+                </g>
+                <circle class="pd-equip-tag-bg" cx="1216" cy="210" r="10"></circle>
+                <text class="pd-equip-tag" x="1216" y="214" text-anchor="middle">3</text>
+              </g>
+
+              <!-- ================= EQUIPMENT: ZONA ENFRIAMIENTO ================= -->
+              <g class="pd-equip" data-id="cooler-vertical" data-zone="enfriamiento" data-status="stopped" data-tag="20" data-name="Enfriador vertical de azúcar" tabindex="0" role="button" aria-label="Enfriador vertical de azúcar con placas y aire acondicionado (equipo 20)">
+                <rect class="pd-equip-body" x="1280" y="90" width="300" height="560" rx="14"></rect>
+                <path class="pd-equip-accent" d="M1355,90 v560 M1430,90 v560 M1505,90 v560" stroke="#C7D1CB" stroke-width="2" fill="none"></path>
+                <path class="pd-equip-accent" d="M1295,220 h270 M1295,330 h270 M1295,440 h270 M1295,550 h270" stroke="#DCE4DF" stroke-width="2" fill="none"></path>
+                <g id="pd-cooler-air-arrows">
+                  <path d="M1310,648 l0,-18 M1304,636 l6,-6 l6,6" stroke="#7DD3FC" stroke-width="3" fill="none"></path>
+                  <path d="M1390,648 l0,-18 M1384,636 l6,-6 l6,6" stroke="#7DD3FC" stroke-width="3" fill="none"></path>
+                  <path d="M1470,648 l0,-18 M1464,636 l6,-6 l6,6" stroke="#7DD3FC" stroke-width="3" fill="none"></path>
+                  <path d="M1550,648 l0,-18 M1544,636 l6,-6 l6,6" stroke="#7DD3FC" stroke-width="3" fill="none"></path>
+                </g>
+                <circle class="pd-equip-tag-bg" cx="1298" cy="86" r="11"></circle>
+                <text class="pd-equip-tag" x="1298" y="90" text-anchor="middle">20</text>
+                <text class="pd-equip-label" x="1430" y="676" text-anchor="middle">Enfriador vertical</text>
+              </g>
+
+              <g class="pd-equip" data-id="valve-discharge" data-zone="enfriamiento" data-status="stopped" data-tag="3" data-name="Válvula rotativa – descarga enfriador" tabindex="0" role="button" aria-label="Válvula rotativa, descarga del enfriador (equipo 3)">
+                <circle class="pd-equip-body" cx="1460" cy="700" r="18"></circle>
+                <g class="pd-spin" data-spin="valve-discharge">
+                  <path d="M1460,684 L1460,716 M1444,700 L1476,700" stroke="#243B30" stroke-width="2.5"></path>
+                </g>
+                <circle class="pd-equip-tag-bg" cx="1476" cy="684" r="10"></circle>
+                <text class="pd-equip-tag" x="1476" y="688" text-anchor="middle">3</text>
+              </g>
+
+              <g class="pd-equip" data-id="plateHX-enfriador" data-zone="enfriamiento" data-status="stopped" data-tag="19" data-name="Intercambiador de placas – circuito enfriador" tabindex="0" role="button" aria-label="Intercambiador de placas del circuito del enfriador (equipo 19)">
+                <rect class="pd-equip-body" x="1300" y="780" width="70" height="90" rx="6"></rect>
+                <path class="pd-equip-accent" d="M1310,790 v70 M1325,790 v70 M1340,790 v70 M1355,790 v70" stroke="#C7D1CB" stroke-width="2" fill="none"></path>
+                <circle class="pd-equip-tag-bg" cx="1316" cy="776" r="10"></circle>
+                <text class="pd-equip-tag" x="1316" y="780" text-anchor="middle">19</text>
+                <text class="pd-equip-label" x="1260" y="815" font-size="10">cooling water</text>
+              </g>
+
+              <g class="pd-equip" data-id="pump-cooler-water" data-zone="enfriamiento" data-status="stopped" data-tag="11" data-name="Bomba agua del enfriador" tabindex="0" role="button" aria-label="Bomba de agua del enfriador (equipo 11)">
+                <circle class="pd-equip-body" cx="1430" cy="900" r="16"></circle>
+                <g class="pd-spin" data-spin="pump-cooler-water">
+                  <path d="M1430,900 L1430,886 M1430,900 L1443,908 M1430,900 L1417,908" stroke="#243B30" stroke-width="2.5" fill="none"></path>
+                </g>
+                <circle class="pd-equip-tag-bg" cx="1446" cy="886" r="10"></circle>
+                <text class="pd-equip-tag" x="1446" y="890" text-anchor="middle">11</text>
+              </g>
+
+              <!-- ================= EQUIPMENT: UNIDAD DE FRIO ================= -->
+              <rect class="pd-zone-box" x="505" y="715" width="355" height="290" rx="18"></rect>
+              <text class="pd-zone-label" x="525" y="738" font-size="11">Unidad de frío</text>
+
+              <g class="pd-equip" data-id="chiller" data-zone="frio" data-status="stopped" data-tag="14" data-name="Chiller" tabindex="0" role="button" aria-label="Chiller, unidad de frío (equipo 14)">
+                <rect class="pd-equip-body" x="540" y="760" width="110" height="70" rx="8"></rect>
+                <circle cx="620" cy="775" r="10" fill="#DCE4DF" stroke="#9AA89E" stroke-width="1.5"></circle>
+                <g class="pd-spin" data-spin="chiller">
+                  <path d="M620,768 L620,782 M613,775 L627,775" stroke="#4E5F56" stroke-width="2"></path>
+                </g>
+                <circle class="pd-equip-tag-bg" cx="556" cy="756" r="11"></circle>
+                <text class="pd-equip-tag" x="556" y="760" text-anchor="middle">14</text>
+                <text class="pd-equip-label" x="595" y="848" text-anchor="middle" font-size="11">Chiller</text>
+              </g>
+
+              <g class="pd-equip" data-id="tank" data-zone="frio" data-status="stopped" data-tag="15" data-name="Tanque de agua helada" tabindex="0" role="button" aria-label="Tanque de agua helada (equipo 15)">
+                <rect class="pd-equip-body" x="680" y="770" width="70" height="100" rx="10"></rect>
+                <path class="pd-equip-accent" d="M680,800 h70" stroke="#6EE7B7" stroke-width="3" fill="none"></path>
+                <circle class="pd-equip-tag-bg" cx="696" cy="766" r="11"></circle>
+                <text class="pd-equip-tag" x="696" y="770" text-anchor="middle">15</text>
+                <text class="pd-equip-label" x="715" y="888" text-anchor="middle" font-size="10">Tanque</text>
+              </g>
+
+              <g class="pd-equip" data-id="pump-chilled" data-zone="frio" data-status="stopped" data-tag="11" data-name="Bomba circuito de agua helada" tabindex="0" role="button" aria-label="Bomba del circuito de agua helada (equipo 11)">
+                <circle class="pd-equip-body" cx="800" cy="850" r="16"></circle>
+                <g class="pd-spin" data-spin="pump-chilled">
+                  <path d="M800,850 L800,836 M800,850 L813,858 M800,850 L787,858" stroke="#243B30" stroke-width="2.5" fill="none"></path>
+                </g>
+                <circle class="pd-equip-tag-bg" cx="816" cy="836" r="10"></circle>
+                <text class="pd-equip-tag" x="816" y="840" text-anchor="middle">11</text>
+              </g>
+
+              <g class="pd-equip" data-id="plateHX-frio" data-zone="frio" data-status="stopped" data-tag="19" data-name="Intercambiador de placas – circuito chiller" tabindex="0" role="button" aria-label="Intercambiador de placas del circuito del chiller (equipo 19)">
+                <rect class="pd-equip-body" x="520" y="930" width="60" height="65" rx="6"></rect>
+                <path class="pd-equip-accent" d="M530,938 v49 M545,938 v49 M560,938 v49" stroke="#C7D1CB" stroke-width="2" fill="none"></path>
+                <circle class="pd-equip-tag-bg" cx="534" cy="926" r="10"></circle>
+                <text class="pd-equip-tag" x="534" y="930" text-anchor="middle">19</text>
+                <text class="pd-equip-label" x="470" y="965" font-size="10">cooling water</text>
+              </g>
+
+              <!-- ================= EQUIPMENT: DESHUMIDIFICADOR ================= -->
+              <rect class="pd-zone-box" x="895" y="715" width="355" height="290" rx="18"></rect>
+              <text class="pd-zone-label" x="915" y="738" font-size="11">Deshumidificador</text>
+
+              <g class="pd-equip" data-id="filter-cooler" data-zone="deshumidificador" data-status="stopped" data-tag="9" data-name="Filtro de aire – deshumidificador" tabindex="0" role="button" aria-label="Filtro de aire del deshumidificador (equipo 9)">
+                <rect class="pd-equip-body" x="920" y="770" width="70" height="60" rx="6"></rect>
+                <path class="pd-equip-accent" d="M930,780 v40 M945,780 v40 M960,780 v40 M975,780 v40" stroke="#C7D1CB" stroke-width="2" fill="none"></path>
+                <circle class="pd-equip-tag-bg" cx="934" cy="766" r="10"></circle>
+                <text class="pd-equip-tag" x="934" y="770" text-anchor="middle">9</text>
+              </g>
+
+              <g class="pd-equip" data-id="battery" data-zone="deshumidificador" data-status="stopped" data-tag="6" data-name="Batería de enfriamiento" tabindex="0" role="button" aria-label="Batería de enfriamiento del deshumidificador (equipo 6)">
+                <rect class="pd-equip-body" x="1010" y="770" width="90" height="60" rx="6"></rect>
+                <path class="pd-equip-accent" d="M1020,780 v40 M1035,780 v40 M1050,780 v40 M1065,780 v40 M1080,780 v40" stroke="#6EE7B7" stroke-width="2" fill="none"></path>
+                <circle class="pd-equip-tag-bg" cx="1026" cy="766" r="10"></circle>
+                <text class="pd-equip-tag" x="1026" y="770" text-anchor="middle">6</text>
+                <text class="pd-equip-label" x="1055" y="848" text-anchor="middle" font-size="10">Batería</text>
+              </g>
+
+              <g class="pd-equip" data-id="separator" data-zone="deshumidificador" data-status="stopped" data-tag="13" data-name="Separador de gotas" tabindex="0" role="button" aria-label="Separador de gotas del deshumidificador (equipo 13)">
+                <rect class="pd-equip-body" x="1120" y="770" width="70" height="60" rx="6"></rect>
+                <path class="pd-equip-accent" d="M1130,780 l10,10 l-10,10 M1150,780 l10,10 l-10,10 M1170,780 l10,10 l-10,10" stroke="#9AA89E" stroke-width="2" fill="none"></path>
+                <circle class="pd-equip-tag-bg" cx="1134" cy="766" r="10"></circle>
+                <text class="pd-equip-tag" x="1134" y="770" text-anchor="middle">13</text>
+                <text class="pd-equip-label" x="1178" y="852" font-size="10">condensado ↓</text>
+              </g>
+
+              <g class="pd-equip" data-id="blower" data-zone="deshumidificador" data-status="stopped" data-tag="21" data-name="Soplador de aire acondicionado" tabindex="0" role="button" aria-label="Soplador de aire acondicionado (equipo 21)">
+                <circle class="pd-equip-body" cx="1190" cy="900" r="20"></circle>
+                <g class="pd-spin" data-spin="blower">
+                  <path class="pd-equip-accent" d="M1190,900 L1190,880 M1190,900 L1208,910 M1190,900 L1172,910" stroke="#243B30" stroke-width="2.5" fill="none"></path>
+                </g>
+                <circle class="pd-equip-tag-bg" cx="1208" cy="884" r="10"></circle>
+                <text class="pd-equip-tag" x="1208" y="888" text-anchor="middle">21</text>
+                <text class="pd-equip-label" x="1190" y="936" text-anchor="middle" font-size="10">Soplador</text>
+              </g>
+
+              <!-- ================= EQUIPMENT: TREN DE AIRE DE SECADO ================= -->
+              <g class="pd-equip" data-id="prefilter" data-zone="secado" data-status="stopped" data-tag="8" data-name="Prefiltro de aire" tabindex="0" role="button" aria-label="Prefiltro de aire (equipo 8)">
+                <rect class="pd-equip-body" x="60" y="770" width="70" height="60" rx="6"></rect>
+                <path class="pd-equip-accent" d="M70,780 v40 M85,780 v40 M100,780 v40 M115,780 v40" stroke="#C7D1CB" stroke-width="2" fill="none"></path>
+                <circle class="pd-equip-tag-bg" cx="74" cy="766" r="10"></circle>
+                <text class="pd-equip-tag" x="74" y="770" text-anchor="middle">8</text>
+                <text class="pd-equip-label" x="95" y="848" text-anchor="middle" font-size="10">Prefiltro</text>
+              </g>
+
+              <g class="pd-equip" data-id="filter-dryer" data-zone="secado" data-status="stopped" data-tag="9" data-name="Filtro de aire – secador" tabindex="0" role="button" aria-label="Filtro de aire de la línea del secador (equipo 9)">
+                <rect class="pd-equip-body" x="160" y="770" width="70" height="60" rx="6"></rect>
+                <path class="pd-equip-accent" d="M170,780 v40 M185,780 v40 M200,780 v40 M215,780 v40" stroke="#C7D1CB" stroke-width="2" fill="none"></path>
+                <circle class="pd-equip-tag-bg" cx="174" cy="766" r="10"></circle>
+                <text class="pd-equip-tag" x="174" y="770" text-anchor="middle">9</text>
+                <text class="pd-equip-label" x="195" y="848" text-anchor="middle" font-size="10">Filtro</text>
+              </g>
+
+              <g class="pd-equip" data-id="preheater" data-zone="secado" data-status="stopped" data-tag="5" data-name="Precalentador de aire" tabindex="0" role="button" aria-label="Precalentador de aire con condensado (equipo 5)">
+                <rect class="pd-equip-body" x="260" y="770" width="90" height="60" rx="6"></rect>
+                <path class="pd-equip-accent" d="M275,780 v40 M295,780 v40 M315,780 v40 M335,780 v40" stroke="#166534" stroke-width="2" fill="none"></path>
+                <circle class="pd-equip-tag-bg" cx="276" cy="766" r="10"></circle>
+                <text class="pd-equip-tag" x="276" y="770" text-anchor="middle">5</text>
+                <text class="pd-equip-label" x="305" y="848" text-anchor="middle" font-size="10">Precalentador</text>
+              </g>
+
+              <g class="pd-equip" data-id="heater" data-zone="secado" data-status="stopped" data-tag="4" data-name="Calentador de aire" tabindex="0" role="button" aria-label="Calentador de aire con vapor (equipo 4)">
+                <rect class="pd-equip-body" x="380" y="770" width="90" height="60" rx="6"></rect>
+                <path class="pd-equip-accent" d="M395,780 v40 M415,780 v40 M435,780 v40 M455,780 v40" stroke="#EF4444" stroke-width="2" fill="none"></path>
+                <circle class="pd-equip-tag-bg" cx="396" cy="766" r="10"></circle>
+                <text class="pd-equip-tag" x="396" y="770" text-anchor="middle">4</text>
+                <text class="pd-equip-label" x="425" y="848" text-anchor="middle" font-size="10">Calentador</text>
+                <text class="pd-equip-label" x="425" y="735" text-anchor="middle" font-size="9">vapor ↓</text>
+              </g>
+
+              <!-- Ambient air intake arrows -->
+              <path d="M8,800 l20,0 M22,794 l6,6 l-6,6" stroke="#2E6BE6" stroke-width="2.5" fill="none"></path>
+              <path d="M868,800 l20,0 M882,794 l6,6 l-6,6" stroke="#7DD3FC" stroke-width="2.5" fill="none"></path>
+              <text x="12" y="818" font-size="9" fill="#6C7E75">aire ambiente</text>
+              <text x="872" y="818" font-size="9" fill="#6C7E75">aire ambiente</text>
+
+              <g id="pd-particles" aria-hidden="true"></g>
             </svg>
+          </div>
 
-            <h3 class="promo-title">Level up your sales managing to the next level.</h3>
-            <p class="promo-desc">An easy way to manage sales with care and precision.</p>
-            <button class="btn-promo" id="btn-promo-action">Check the updates now</button>
+          <!-- Legend -->
+          <div class="pd-legend">
+            <span class="pd-legend-item"><span class="pd-legend-swatch" style="background:#F97316;"></span>Azúcar</span>
+            <span class="pd-legend-item"><span class="pd-legend-swatch" style="background:#2E6BE6;"></span>Aire de secado</span>
+            <span class="pd-legend-item"><span class="pd-legend-swatch" style="background:#7DD3FC;"></span>Aire del enfriador</span>
+            <span class="pd-legend-item"><span class="pd-legend-swatch" style="background:#EF4444;"></span>Vapor</span>
+            <span class="pd-legend-item"><span class="pd-legend-swatch" style="background:#166534;"></span>Condensado</span>
+            <span class="pd-legend-item"><span class="pd-legend-swatch" style="background:#16A34A;"></span>Agua de placas</span>
+            <span class="pd-legend-item"><span class="pd-legend-swatch" style="background:#6EE7B7;"></span>Agua helada</span>
+            <span class="pd-legend-item"><span class="pd-legend-swatch" style="background:#0D9488;"></span>Recirculación depurador</span>
+          </div>
+        </div>
+
+        <!-- Side panel (desktop) -->
+        <aside class="pd-panel" id="pd-panel" aria-live="polite">
+          <div class="pd-panel-empty" id="pd-panel-empty">
+            <i class="bi bi-cursor-fill"></i>
+            <p>Seleccione un equipo del diagrama para ver su estado y variables en vivo.</p>
+          </div>
+          <div id="pd-panel-content" class="d-none"></div>
+        </aside>
+      </div>
+      <!-- END: Diagram + Side Panel -->
+
+      <!-- Alarm / event log -->
+      <div class="card pd-alarm-card">
+        <div class="card-header">
+          <h2 class="card-title">Eventos y alarmas</h2>
+        </div>
+        <div class="pd-alarm-list" id="pd-alarm-list">
+          <div class="pd-alarm-empty" id="pd-alarm-empty">Sin eventos. La planta está operando con normalidad.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile modal (reuses panel content) -->
+    <div class="modal fade" id="pd-equip-modal" tabindex="-1" aria-labelledby="pd-equip-modal-title" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="pd-equip-modal-title">Equipo</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          </div>
+          <div class="modal-body">
+            <div class="pd-panel" id="pd-panel-mobile"></div>
           </div>
         </div>
       </div>
-      <!-- END: RIGHT AREA -->
-
     </div>
-    <!-- END: Main Layout Grid -->
+
+    <div class="pd-tooltip" id="pd-tooltip" role="tooltip"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'assets/js/process-diagram.js' %}"></script>
 {% endblock %}

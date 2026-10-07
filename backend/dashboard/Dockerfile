@@ -9,7 +9,10 @@ WORKDIR /app
 # journalctl no muestran nada hasta que el buffer se llena.
 ENV PYTHONUNBUFFERED=1
 
-RUN groupadd --system app && useradd --system --gid app --no-create-home app
+# --create-home (no --no-create-home): gunicorn escribe en $HOME en
+# runtime (socket de control) y sin un /home/app real eso tiraba
+# "Permission denied" en Render.
+RUN groupadd --system app && useradd --system --gid app --create-home app
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
